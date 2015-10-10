@@ -23,7 +23,7 @@
                     <archive>
                         <manifest>
                             <addClasspath>true</addClasspath>
-                            <!--<mainClass>org.wso2.carbon.Executor</mainClass>-->
+                            <mainClass>org.wso2.carbon.components.Executor</mainClass>
                         </manifest>
                     </archive>
                 </configuration>

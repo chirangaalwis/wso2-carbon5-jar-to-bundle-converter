@@ -18,6 +18,8 @@
  */
 package org.wso2.carbon.util;
 
+import org.wso2.carbon.components.exceptions.JarToBundleConverterException;
+
 import java.io.*;
 import java.nio.file.DirectoryStream;
 import java.nio.file.Files;
@@ -31,25 +33,40 @@ import java.util.zip.ZipEntry;
 import java.util.zip.ZipInputStream;
 import java.util.zip.ZipOutputStream;
 
+/**
+ * a Java class which contains utility methods utilized during the process of
+ * converting a JAR file to an OSGi bundle
+ */
 public class Utils {
 
-    public static final String JAR_TO_BUNDLE_DIRECTORY = System.getProperty("java.io.tmpdir").endsWith(File.separator) ?
-            System.getProperty("java.io.tmpdir") + "jarsToBundles" :
-            System.getProperty("java.io.tmpdir") + File.separator + "jarsToBundles";
+    public static final Path JAR_TO_BUNDLE_DIRECTORY = Paths.get(System.getProperty("java.io.tmpdir"), "jarsToBundles");
 
+    /**
+     * if exists, deletes the temporary directory which holds the directories during the
+     * conversion from JAR files to OSGi bundles
+     */
     static {
-        Path jarsToBundlesDirectory = Paths.get(JAR_TO_BUNDLE_DIRECTORY);
         try {
-            if (Files.exists(jarsToBundlesDirectory)) {
-                deleteDirectory(jarsToBundlesDirectory);
+            if (Files.exists(JAR_TO_BUNDLE_DIRECTORY)) {
+                deleteDirectory(JAR_TO_BUNDLE_DIRECTORY);
             }
         } catch (IOException e) {
             System.exit(1);
         }
     }
 
+    /**
+     * Creates an OSGi bundle out of a JAR file
+     *
+     * @param jarFile         the JAR file to be bundled
+     * @param targetDirectory the directory into which the created OSGi bundle needs to be placed into
+     * @param manifest        the bundle manifest file
+     * @param extensionPrefix prefix, if any, for the bundle
+     * @throws IOException                   if an I/O error occurs while reading the JAR or creating the bundle
+     * @throws JarToBundleConverterException if an error occurs during the creation of the OSGi bundle
+     */
     public static void createBundle(Path jarFile, Path targetDirectory, Manifest manifest, String extensionPrefix)
-            throws IOException {
+            throws IOException, JarToBundleConverterException {
         if (manifest == null) {
             manifest = new Manifest();
         }
@@ -76,10 +93,19 @@ public class Utils {
         Utils.createBundle(jarFile, extensionBundle, manifest);
     }
 
-    public static void createBundle(Path jarFile, Path bundle, Manifest manifest) throws IOException {
-        String extractedDirectoryPath =
-                JAR_TO_BUNDLE_DIRECTORY + File.separator + System.currentTimeMillis() + Math.random();
-        Path extractedDirectory = Paths.get(extractedDirectoryPath);
+    /**
+     * Creates an OSGi bundle out of a JAR file
+     *
+     * @param jarFile  the JAR file to be bundled
+     * @param bundle   the directory into which the created OSGi bundle needs to be placed into
+     * @param manifest the bundle manifest file
+     * @throws IOException                   if an I/O error occurs while reading the JAR or creating the bundle
+     * @throws JarToBundleConverterException if an error occurs during the creation of the OSGi bundle
+     */
+    public static void createBundle(Path jarFile, Path bundle, Manifest manifest)
+            throws IOException, JarToBundleConverterException {
+        Path extractedDirectory = Paths
+                .get(JAR_TO_BUNDLE_DIRECTORY.toString(), ("" + System.currentTimeMillis() + Math.random()));
         OutputStream manifestOutputStream = null;
         OutputStream p2InfOutputStream = null;
 
@@ -89,16 +115,16 @@ public class Utils {
             }
 
             Utils.copyFileToDirectory(jarFile, extractedDirectory);
-            Path manifestDirectory = Paths.get(extractedDirectoryPath, "META-INF");
+            Path manifestDirectory = Paths.get(extractedDirectory.toString(), "META-INF");
             if (!Files.exists(manifestDirectory)) {
                 Files.createDirectories(manifestDirectory);
             }
 
-            Path manifestFile = Paths.get(extractedDirectoryPath, "META-INF", "MANIFEST.MF");
+            Path manifestFile = Paths.get(extractedDirectory.toString(), "META-INF", "MANIFEST.MF");
             manifestOutputStream = Files.newOutputStream(manifestFile);
             manifest.write(manifestOutputStream);
 
-            Path p2InfFile = Paths.get(extractedDirectoryPath, "META-INF", "p2.inf");
+            Path p2InfFile = Paths.get(extractedDirectory.toString(), "META-INF", "p2.inf");
             if (!Files.exists(p2InfFile)) {
                 Files.createFile(p2InfFile);
             }
@@ -118,41 +144,64 @@ public class Utils {
         }
     }
 
-    public static void copyFileToDirectory(Path source, Path destination) throws IOException {
+    /**
+     * Copies the {@code source} file to the specified {@code destination}
+     *
+     * @param source      the file path of the source
+     * @param destination the file path of the destination
+     * @throws IOException                   if an I/O error occurs during the copying of the source file to the destination
+     * @throws JarToBundleConverterException if invalid file path argument(s) were specified
+     */
+    public static void copyFileToDirectory(Path source, Path destination)
+            throws IOException, JarToBundleConverterException {
         Path file;
 
-        if (!Files.exists(destination)) {
-            if (Files.isDirectory(destination)) {
-                // if the destination points to a non-existing directory
-                Files.createDirectories(destination);
-                file = Paths.get(destination.toString(), source.getFileName().toString());
+        if ((source != null) && (destination != null)) {
+            if (!Files.exists(destination)) {
+                if (Files.isDirectory(destination)) {
+                    // if the destination points to a non-existing directory
+                    Files.createDirectories(destination);
+                    file = Paths.get(destination.toString(), source.getFileName().toString());
+                } else {
+                    // if the destination points to a non-existing file
+                    String message = String
+                            .format("Path instance destination points to the file %s. Path instance destination cannot point to a file.",
+                                    destination.toString());
+                    throw new JarToBundleConverterException(message);
+                }
             } else {
-                // if the destination points to a non-existing file
-                String message = String
-                        .format("Path instance destination points to the file %s. Path instance destination cannot point to a file.",
-                                destination.toString());
-                throw new RuntimeException(message);
+                if (Files.isDirectory(destination)) {
+                    // if the destination points to an existing directory
+                    file = Paths.get(destination.toString(), source.getFileName().toString());
+                } else {
+                    // if the destination points to an existing file
+                    String message = String
+                            .format("Path instance destination points to the file %s. Path instance destination cannot point to a file.",
+                                    destination.toString());
+                    throw new JarToBundleConverterException(message);
+                }
             }
-        } else {
-            if (Files.isDirectory(destination)) {
-                // if the destination points to an existing directory
-                file = Paths.get(destination.toString(), source.getFileName().toString());
-            } else {
-                // if the destination points to an existing file
-                String message = String
-                        .format("Path instance destination points to the file %s. Path instance destination cannot point to a file.",
-                                destination.toString());
-                throw new RuntimeException(message);
-            }
-        }
 
-        Files.copy(source, file);
+            Files.copy(source, file);
+        } else {
+            String message = "Path instances source and destination cannot refer to null values.";
+            throw new JarToBundleConverterException(message);
+        }
     }
 
-    public static void archiveDirectory(Path destinationArchive, Path sourceDirectory) throws IOException {
+    /**
+     * Archives the specified source directory in the specified {@code destination} file path
+     *
+     * @param destinationArchive the file path to which the source directory should be archived
+     * @param sourceDirectory    the source directory to be archived
+     * @throws IOException                   if an I/O error occurs
+     * @throws JarToBundleConverterException if destinationArchive file path is not a directory
+     */
+    public static void archiveDirectory(Path destinationArchive, Path sourceDirectory)
+            throws IOException, JarToBundleConverterException {
         if (!Files.isDirectory(sourceDirectory)) {
             String message = String.format("%s is not a directory.", sourceDirectory);
-            throw new RuntimeException(message);
+            throw new JarToBundleConverterException(message);
         }
 
         ZipOutputStream zipOutputStream = new ZipOutputStream(Files.newOutputStream(destinationArchive));
@@ -160,6 +209,14 @@ public class Utils {
         zipOutputStream.close();
     }
 
+    /**
+     * Zips the content of the specified file/directory in to the destination specified by the {@code ZipOutputStream}
+     *
+     * @param zipDirectory           the file/directory which is to be zipped
+     * @param zipOutputStream        the ZipOutputStream instance
+     * @param archiveSourceDirectory the source directory whose content are to be archived
+     * @throws IOException if an I/O error occurs
+     */
     private static void zipDirectory(Path zipDirectory, ZipOutputStream zipOutputStream, Path archiveSourceDirectory)
             throws IOException {
         // get a listing of the directory content
@@ -203,6 +260,13 @@ public class Utils {
         }
     }
 
+    /**
+     * Returns a {@code String} file path of {@code file} relative to the {@code archiveSourceDir}
+     *
+     * @param file             the file of which the file path relative to the {@code archiveSourceDir} is to be returned
+     * @param archiveSourceDir the source directory to be archived which contains all the file content
+     * @return a {@code String} file path of {@code file} relative to the {@code archiveSourceDir}
+     */
     private static String getZipEntryPath(Path file, Path archiveSourceDir) {
         String entryPath = file.toString();
         entryPath = entryPath.substring(archiveSourceDir.toString().length() + 1);
@@ -215,6 +279,13 @@ public class Utils {
         return entryPath;
     }
 
+    /**
+     * Deletes the directory and its child content
+     *
+     * @param directory the file path of the directory to be deleted
+     * @return true if successfully deleted, else false
+     * @throws IOException if an I/O error occurs during the directory deletion
+     */
     public static boolean deleteDirectory(Path directory) throws IOException {
         if (Files.isDirectory(directory)) {
             List<Path> children = Utils.listFiles(directory);
@@ -231,6 +302,13 @@ public class Utils {
         return true;
     }
 
+    /**
+     * Returns a {@code List} of file paths of the child elements of the specified directory
+     *
+     * @param directory the directory whose child elements are to be returned
+     * @return a {@link List} of {@link Path} instances of the child elements of the specified directory
+     * @throws IOException if an I/O error occurs
+     */
     public static List<Path> listFiles(Path directory) throws IOException {
         List<Path> files = new ArrayList<>();
         try (DirectoryStream<Path> directoryStream = Files.newDirectoryStream(directory)) {
@@ -245,10 +323,10 @@ public class Utils {
     }
 
     /**
-     * returns a list of Java package names within the jar file, separated by a comma
+     * returns a {@code List} of Java package names within the JAR file, separated by a commas
      *
-     * @param jarFile the jar file of which the package name list is to be returned
-     * @return a list of Java package names within the jar file, separated by a comma
+     * @param jarFile the JAR file of which the package name list is to be returned
+     * @return a list of Java package names within the JAR file, separated by a comma
      */
     public static String parseJar(Path jarFile) throws IOException {
         List<String> exportedPackagesList;
@@ -292,12 +370,12 @@ public class Utils {
     }
 
     /**
-     * returns a list of content in the zip file corresponding to the ZipInputStream instance in the
-     * form of ZipEntry instances
+     * returns a list of content in the zip file corresponding to the {@code ZipInputStream} instance in the
+     * form of {@code ZipEntry} instances
      *
-     * @param zipInputStream the ZipInputStream instance
-     * @return a list of content in the zip file corresponding to the ZipInputStream instance in the
-     * form of ZipEntry instances
+     * @param zipInputStream the {@link ZipInputStream} instance
+     * @return a list of content in the zip file corresponding to the {@link ZipInputStream} instance in the
+     * form of {@link ZipEntry} instances
      */
     private static List<ZipEntry> populateList(ZipInputStream zipInputStream) throws IOException {
         List<ZipEntry> listEntry;

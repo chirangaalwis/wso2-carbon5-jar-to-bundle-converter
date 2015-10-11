@@ -18,8 +18,12 @@
  */
 package org.wso2.carbon.util;
 
+/**
+ * a Java class which defines constants
+ */
 public class Constants {
 
+    //Bundle manifest constants
     public static final String MANIFEST_VERSION = "Manifest-Version";
     public static final String BUNDLE_MANIFEST_VERSION = "Bundle-ManifestVersion";
     public static final String BUNDLE_NAME = "Bundle-Name";

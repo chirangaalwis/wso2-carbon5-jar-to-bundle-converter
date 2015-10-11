@@ -36,33 +36,51 @@ public class Executor {
             boolean loopAgain;
             String source, destination;
             Path sourcePath, destinationPath;
-            while (true) {
-                do {
-                    System.out.print("Enter source path: ");
-                    source = SCANNER.nextLine();
-                    sourcePath = getUserInputPath(source);
+            do {
+                System.out.print("Enter source path: ");
+                source = SCANNER.nextLine();
+                sourcePath = getUserInputPath(source);
 
-                    System.out.print("Enter destination path: ");
-                    destination = SCANNER.nextLine();
-                    destinationPath = getUserInputPath(destination);
+                System.out.print("Enter destination path: ");
+                destination = SCANNER.nextLine();
+                destinationPath = getUserInputPath(destination);
 
-                    if (!((sourcePath == null) || (destinationPath == null))) {
+                if (!((sourcePath == null) || (destinationPath == null))) {
+                    if ((Files.isReadable(sourcePath)) && (Files.isDirectory(destinationPath)) && (Files
+                            .isWritable(destinationPath))) {
                         jarToBundleConverter.convert(sourcePath, destinationPath);
-                        System.out.print("Do you want to continue? (Y/N)");
-                        loopAgain = continueProgram(SCANNER.next());
-                        System.out.println();
+                        loopAgain = continueProgram();
+                    } else if (!Files.isReadable(sourcePath)) {
+                        System.out.println(
+                                "The user does not have permission to read from the source path. Please try again.");
+                        loopAgain = continueProgram();
+                    } else if (!Files.isDirectory(destinationPath)) {
+                        System.out.println("The destination path has to be a directory. Please try again.");
+                        loopAgain = continueProgram();
+                    } else if (!Files.isWritable(destinationPath)) {
+                        System.out.println(
+                                "The user does not have permission to write to the destination path. Please try again.");
+                        loopAgain = continueProgram();
                     } else {
-                        System.out.println("Invalid path(s). Please try again.");
-                        loopAgain = true;
+                        loopAgain = continueProgram();
                     }
-                } while (loopAgain);
-            }
+                } else {
+                    System.out.println("Invalid path(s). Please try again.");
+                    loopAgain = continueProgram();
+                }
+            } while (loopAgain);
         } catch (Exception e) {
             System.out.println("An error has occurred during program execution.");
             System.exit(1);
         }
     }
 
+    /**
+     * Returns the file path input by the user
+     *
+     * @param input the user input {@code String} value
+     * @return the file path input by the user if exists, else returns null
+     */
     private static Path getUserInputPath(String input) {
         Path path = Paths.get(input);
         if (Files.exists(path)) {
@@ -72,7 +90,16 @@ public class Executor {
         }
     }
 
-    private static boolean continueProgram(String input) {
+    /**
+     * Returns the user response on whether to continue the program or exit
+     *
+     * @return true if user prefers to continue, else false
+     */
+    private static boolean continueProgram() {
+        System.out.print("Do you want to continue? (Y/N) ");
+        String input = (SCANNER.next());
+        SCANNER.nextLine();
+
         input = input.toLowerCase();
         final int firstLetterIndex = 0;
         return (input.charAt(firstLetterIndex) == 'y');

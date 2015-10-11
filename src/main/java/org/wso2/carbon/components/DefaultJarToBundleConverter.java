@@ -55,6 +55,11 @@ public class DefaultJarToBundleConverter implements IJarToBundleConverter {
         }
     }
 
+    /**
+     * Returns an OSGi bundle {@code Manifest} file with {@code DYNAMIC_IMPORT_PACKAGE} attribute specified
+     *
+     * @return an OSGi bundle {@code Manifest} file with {@code DYNAMIC_IMPORT_PACKAGE} attribute specified
+     */
     private Manifest getManifest() {
         Manifest manifest = new Manifest();
         Attributes attributes = manifest.getMainAttributes();

@@ -22,6 +22,9 @@ import org.wso2.carbon.components.exceptions.JarToBundleConverterException;
 
 import java.nio.file.Path;
 
+/**
+ * a Java interface which defines functions common to a JAR-to-OSGi-bundle converter
+ */
 public interface IJarToBundleConverter {
 
     /**
@@ -30,7 +33,7 @@ public interface IJarToBundleConverter {
      *
      * @param source      source JAR file or directory containing JAR files to be converted to OSGi bundles
      * @param destination destination directory of the created OSGi bundle(s)
-     * @throws JarToBundleConverterException
+     * @throws JarToBundleConverterException if an error occurs during the process of JAR-OSGi-Bundle conversion
      */
     void convert(Path source, Path destination) throws JarToBundleConverterException;
 

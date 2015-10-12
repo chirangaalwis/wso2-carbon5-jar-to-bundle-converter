@@ -19,7 +19,6 @@
 package org.wso2.carbon.util;
 
 import org.apache.logging.log4j.LogManager;
-import org.wso2.carbon.components.exceptions.JarToBundleConverterException;
 
 import java.io.*;
 import java.nio.charset.Charset;
@@ -56,7 +55,6 @@ public class Utils {
             }
         } catch (IOException e) {
             String message = String.format("Failed to delete %s", JAR_TO_BUNDLE_DIRECTORY);
-            LOG.warn(message);
             throw new RuntimeException(message);
         }
     }
@@ -68,11 +66,10 @@ public class Utils {
      * @param targetDirectory the directory into which the created OSGi bundle needs to be placed
      * @param manifest        the OSGi bundle manifest file
      * @param extensionPrefix prefix, if any, for the bundle
-     * @throws IOException                   if an I/O error occurs while reading the JAR or generating the bundle
-     * @throws JarToBundleConverterException if an error occurs during the generation of the OSGi bundle
+     * @throws IOException if an I/O error occurs while reading the JAR or generating the bundle
      */
     public static void createBundle(Path jarFile, Path targetDirectory, Manifest manifest, String extensionPrefix)
-            throws IOException, JarToBundleConverterException {
+            throws IOException {
         if (manifest == null) {
             manifest = new Manifest();
         }
@@ -115,8 +112,7 @@ public class Utils {
                     tempJarFilePathHolder.toString(), extensionBundle.toString());
         } else {
             String message = "Path representing the JAR file name has zero elements.";
-            LOG.error(message);
-            throw new JarToBundleConverterException(message);
+            throw new RuntimeException(message);
         }
     }
 
@@ -126,11 +122,9 @@ public class Utils {
      * @param jarFile  the JAR file to be bundled
      * @param bundle   the directory into which the created OSGi bundle needs to be placed into
      * @param manifest the OSGi bundle manifest file
-     * @throws IOException                   if an I/O error occurs while reading the JAR or generating the bundle
-     * @throws JarToBundleConverterException if an error occurs during the generation of the OSGi bundle
+     * @throws IOException if an I/O error occurs while reading the JAR or generating the bundle
      */
-    public static void createBundle(Path jarFile, Path bundle, Manifest manifest)
-            throws IOException, JarToBundleConverterException {
+    public static void createBundle(Path jarFile, Path bundle, Manifest manifest) throws IOException {
         Path extractedDirectory = Paths
                 .get(JAR_TO_BUNDLE_DIRECTORY.toString(), ("" + System.currentTimeMillis() + Math.random()));
         OutputStream manifestOutputStream = null;
@@ -184,11 +178,9 @@ public class Utils {
      *
      * @param source      the file path of the source
      * @param destination the file path of the destination
-     * @throws IOException                   if an I/O error occurs during the copying of the source file to the destination
-     * @throws JarToBundleConverterException if invalid file path argument(s) were specified
+     * @throws IOException if an I/O error occurs during the copying of the source file to the destination
      */
-    public static void copyFileToDirectory(Path source, Path destination)
-            throws IOException, JarToBundleConverterException {
+    public static void copyFileToDirectory(Path source, Path destination) throws IOException {
         Path file;
         Path sourceFile;
 
@@ -202,16 +194,14 @@ public class Utils {
                         file = Paths.get(destination.toString(), sourceFile.toString());
                     } else {
                         String message = "Path instance source has no elements.";
-                        LOG.error(message);
-                        throw new JarToBundleConverterException(message);
+                        throw new RuntimeException(message);
                     }
                 } else {
                     // if the destination points to a non-existing file
                     String message = String
                             .format("Path instance destination points to the file %s. Path instance destination cannot point to a file.",
                                     destination.toString());
-                    LOG.warn(message);
-                    throw new JarToBundleConverterException(message);
+                    throw new RuntimeException(message);
                 }
             } else {
                 if (Files.isDirectory(destination)) {
@@ -221,16 +211,14 @@ public class Utils {
                         file = Paths.get(destination.toString(), sourceFile.toString());
                     } else {
                         String message = "Path instance source source has no elements.";
-                        LOG.error(message);
-                        throw new JarToBundleConverterException(message);
+                        throw new RuntimeException(message);
                     }
                 } else {
                     // if the destination points to an existing file
                     String message = String
                             .format("Path instance destination points to the file %s. Path instance destination cannot point to a file.",
                                     destination.toString());
-                    LOG.warn(message);
-                    throw new JarToBundleConverterException(message);
+                    throw new RuntimeException(message);
                 }
             }
 
@@ -240,8 +228,7 @@ public class Utils {
                     source.toString(), destination.toString(), file.toString());
         } else {
             String message = "Path instances source and destination cannot refer to null values.";
-            LOG.error(message);
-            throw new JarToBundleConverterException(message);
+            throw new RuntimeException(message);
         }
     }
 
@@ -250,15 +237,12 @@ public class Utils {
      *
      * @param destinationArchive the file path to which the source directory should be archived
      * @param sourceDirectory    the source directory to be archived
-     * @throws IOException                   if an I/O error occurs
-     * @throws JarToBundleConverterException if destinationArchive file path is not a directory
+     * @throws IOException if an I/O error occurs
      */
-    public static void archiveDirectory(Path destinationArchive, Path sourceDirectory)
-            throws IOException, JarToBundleConverterException {
+    public static void archiveDirectory(Path destinationArchive, Path sourceDirectory) throws IOException {
         if (!Files.isDirectory(sourceDirectory)) {
             String message = String.format("%s is not a directory.", sourceDirectory);
-            LOG.warn(message);
-            throw new JarToBundleConverterException(message);
+            throw new RuntimeException(message);
         }
 
         ZipOutputStream zipOutputStream = null;
@@ -284,11 +268,10 @@ public class Utils {
      * @param zipDirectory           the file/directory which is to be zipped
      * @param zipOutputStream        the ZipOutputStream instance
      * @param archiveSourceDirectory the source directory whose content are to be archived
-     * @throws IOException                   if an I/O error occurs
-     * @throws JarToBundleConverterException if file path(s) have no elements
+     * @throws IOException if an I/O error occurs
      */
     private static void zipDirectory(Path zipDirectory, ZipOutputStream zipOutputStream, Path archiveSourceDirectory)
-            throws IOException, JarToBundleConverterException {
+            throws IOException {
         // get a listing of the directory content
         List<Path> directoryList = Utils.listFiles(zipDirectory);
         final int maximumByteSize = 40960;
@@ -332,7 +315,7 @@ public class Utils {
                             aDirectoryItem.toString());
                 } else {
                     String message = "Path instance aDirectoryItem has no elements.";
-                    throw new JarToBundleConverterException(message);
+                    throw new RuntimeException(message);
                 }
             } finally {
                 if (fileInputStream != null) {

@@ -18,9 +18,7 @@
  */
 package org.wso2.carbon.components;
 
-import org.apache.logging.log4j.LogManager;
 import org.wso2.carbon.components.interfaces.IJarToBundleConverter;
-import org.wso2.carbon.util.FormatLogger;
 
 import java.nio.file.Files;
 import java.nio.file.Path;
@@ -31,7 +29,6 @@ import java.util.Scanner;
 public class DefaultExecutor {
 
     private static final Scanner SCANNER = new Scanner(System.in, "UTF-8");
-    private static final FormatLogger LOG = new FormatLogger(LogManager.getLogger(DefaultExecutor.class));
 
     public static void main(String[] args) {
         final IJarToBundleConverter jarToBundleConverter = new DefaultJarToBundleConverter();
@@ -73,11 +70,9 @@ public class DefaultExecutor {
                     loopAgain = continueProgram();
                 }
             } catch (RuntimeException e) {
-                LOG.error(e.getMessage());
                 System.out.println("An error has occurred during the application runtime.");
                 loopAgain = continueProgram();
             } catch (Exception e) {
-                LOG.error(e.getMessage());
                 loopAgain = false;
                 System.exit(1);
             }
@@ -87,7 +82,7 @@ public class DefaultExecutor {
     /**
      * Returns the file path input by the user
      *
-     * @param input the user input {@code String} value
+     * @param input the user input {@link String} value
      * @return the file path input by the user if exists, else returns null
      */
     private static Path getUserInputPath(String input) {

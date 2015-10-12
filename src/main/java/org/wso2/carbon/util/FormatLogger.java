@@ -41,13 +41,27 @@ public class FormatLogger {
         log(Level.WARN, formatter, args);
     }
 
+    public void warn(Throwable throwable, String formatter, Object... args) {
+        log(Level.WARN, throwable, formatter, args);
+    }
+
     public void error(String formatter, Object... args) {
         log(Level.ERROR, formatter, args);
     }
 
-    public void log(Level level, String formatter, Object... args) {
+    public void error(Throwable throwable, String formatter, Object... args) {
+        log(Level.ERROR, throwable, formatter, args);
+    }
+
+    private void log(Level level, String formatter, Object... args) {
         if (log.isEnabled(level)) {
             log.log(level, String.format(formatter, args));
+        }
+    }
+
+    private void log(Level level, Throwable throwable, String formatter, Object... args) {
+        if (log.isEnabled(level)) {
+            log.log(level, String.format(formatter, args), throwable);
         }
     }
 

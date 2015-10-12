@@ -18,7 +18,9 @@
  */
 package org.wso2.carbon.components;
 
+import org.apache.logging.log4j.LogManager;
 import org.wso2.carbon.components.interfaces.IJarToBundleConverter;
+import org.wso2.carbon.util.FormatLogger;
 
 import java.nio.file.Files;
 import java.nio.file.Path;
@@ -26,9 +28,10 @@ import java.nio.file.Paths;
 import java.util.Locale;
 import java.util.Scanner;
 
-public class Executor {
+public class DefaultExecutor {
 
     private static final Scanner SCANNER = new Scanner(System.in, "UTF-8");
+    private static final FormatLogger LOG = new FormatLogger(LogManager.getLogger(DefaultExecutor.class));
 
     public static void main(String[] args) {
         final IJarToBundleConverter jarToBundleConverter = new DefaultJarToBundleConverter();
@@ -70,9 +73,11 @@ public class Executor {
                     loopAgain = continueProgram();
                 }
             } catch (RuntimeException e) {
+                LOG.error(e.getMessage());
                 System.out.println("An error has occurred during the application runtime.");
                 loopAgain = continueProgram();
             } catch (Exception e) {
+                LOG.error(e.getMessage());
                 loopAgain = false;
                 System.exit(1);
             }

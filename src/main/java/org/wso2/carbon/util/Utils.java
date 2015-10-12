@@ -21,6 +21,7 @@ package org.wso2.carbon.util;
 import org.wso2.carbon.components.exceptions.JarToBundleConverterException;
 
 import java.io.*;
+import java.nio.charset.Charset;
 import java.nio.file.DirectoryStream;
 import java.nio.file.Files;
 import java.nio.file.Path;
@@ -51,7 +52,8 @@ public class Utils {
                 deleteDirectory(JAR_TO_BUNDLE_DIRECTORY);
             }
         } catch (IOException e) {
-            System.exit(1);
+            String message = String.format("Failed to delete %s", JAR_TO_BUNDLE_DIRECTORY);
+            throw new RuntimeException(message);
         }
     }
 
@@ -72,25 +74,32 @@ public class Utils {
         }
         String exportedPackages = Utils.parseJar(jarFile);
 
-        String fileName = jarFile.getFileName().toString();
-        fileName = fileName.replaceAll("-", "_");
-        if (fileName.endsWith(".jar")) {
-            fileName = fileName.substring(0, fileName.length() - 4);
+        Path tempJarFile = jarFile.getFileName();
+        String fileName;
+        if (tempJarFile != null) {
+            fileName = tempJarFile.toString();
+            fileName = fileName.replaceAll("-", "_");
+            if (fileName.endsWith(".jar")) {
+                fileName = fileName.substring(0, fileName.length() - 4);
+            }
+            String symbolicName = extensionPrefix + fileName;
+            String pluginName = extensionPrefix + fileName + "_1.0.0.jar";
+            Path extensionBundle = Paths.get(targetDirectory.toString(), pluginName);
+
+            Attributes attributes = manifest.getMainAttributes();
+            attributes.putValue(Constants.MANIFEST_VERSION, "1.0");
+            attributes.putValue(Constants.BUNDLE_MANIFEST_VERSION, "2");
+            attributes.putValue(Constants.BUNDLE_NAME, fileName);
+            attributes.putValue(Constants.BUNDLE_SYMBOLIC_NAME, symbolicName);
+            attributes.putValue(Constants.BUNDLE_VERSION, "1.0.0");
+            attributes.putValue(Constants.EXPORT_PACKAGE, exportedPackages);
+            attributes.putValue(Constants.BUNDLE_CLASSPATH, ".," + tempJarFile.toString());
+
+            Utils.createBundle(jarFile, extensionBundle, manifest);
+        } else {
+            String message = "JAR file path does not specify any elements.";
+            throw new JarToBundleConverterException(message);
         }
-        String symbolicName = extensionPrefix + fileName;
-        String pluginName = extensionPrefix + fileName + "_1.0.0.jar";
-        Path extensionBundle = Paths.get(targetDirectory.toString(), pluginName);
-
-        Attributes attributes = manifest.getMainAttributes();
-        attributes.putValue(Constants.MANIFEST_VERSION, "1.0");
-        attributes.putValue(Constants.BUNDLE_MANIFEST_VERSION, "2");
-        attributes.putValue(Constants.BUNDLE_NAME, fileName);
-        attributes.putValue(Constants.BUNDLE_SYMBOLIC_NAME, symbolicName);
-        attributes.putValue(Constants.BUNDLE_VERSION, "1.0.0");
-        attributes.putValue(Constants.EXPORT_PACKAGE, exportedPackages);
-        attributes.putValue(Constants.BUNDLE_CLASSPATH, ".," + jarFile.getFileName().toString());
-
-        Utils.createBundle(jarFile, extensionBundle, manifest);
     }
 
     /**
@@ -129,7 +138,8 @@ public class Utils {
                 Files.createFile(p2InfFile);
             }
             p2InfOutputStream = Files.newOutputStream(p2InfFile);
-            p2InfOutputStream.write("instructions.configure=markStarted(started:true);".getBytes());
+            p2InfOutputStream
+                    .write("instructions.configure=markStarted(started:true);".getBytes(Charset.forName("UTF-8")));
             p2InfOutputStream.flush();
 
             Utils.archiveDirectory(bundle, extractedDirectory);
@@ -155,13 +165,20 @@ public class Utils {
     public static void copyFileToDirectory(Path source, Path destination)
             throws IOException, JarToBundleConverterException {
         Path file;
+        Path sourceFile;
 
         if ((source != null) && (destination != null)) {
             if (!Files.exists(destination)) {
                 if (Files.isDirectory(destination)) {
                     // if the destination points to a non-existing directory
                     Files.createDirectories(destination);
-                    file = Paths.get(destination.toString(), source.getFileName().toString());
+                    sourceFile = source.getFileName();
+                    if (sourceFile != null) {
+                        file = Paths.get(destination.toString(), sourceFile.toString());
+                    } else {
+                        String message = "Path instance source source has no elements.";
+                        throw new JarToBundleConverterException(message);
+                    }
                 } else {
                     // if the destination points to a non-existing file
                     String message = String
@@ -172,7 +189,13 @@ public class Utils {
             } else {
                 if (Files.isDirectory(destination)) {
                     // if the destination points to an existing directory
-                    file = Paths.get(destination.toString(), source.getFileName().toString());
+                    sourceFile = source.getFileName();
+                    if (sourceFile != null) {
+                        file = Paths.get(destination.toString(), sourceFile.toString());
+                    } else {
+                        String message = "Path instance source source has no elements.";
+                        throw new JarToBundleConverterException(message);
+                    }
                 } else {
                     // if the destination points to an existing file
                     String message = String
@@ -204,9 +227,15 @@ public class Utils {
             throw new JarToBundleConverterException(message);
         }
 
-        ZipOutputStream zipOutputStream = new ZipOutputStream(Files.newOutputStream(destinationArchive));
-        zipDirectory(sourceDirectory, zipOutputStream, sourceDirectory);
-        zipOutputStream.close();
+        ZipOutputStream zipOutputStream = null;
+        try {
+            zipOutputStream = new ZipOutputStream(Files.newOutputStream(destinationArchive));
+            zipDirectory(sourceDirectory, zipOutputStream, sourceDirectory);
+        } finally {
+            if (zipOutputStream != null) {
+                zipOutputStream.close();
+            }
+        }
     }
 
     /**
@@ -215,42 +244,50 @@ public class Utils {
      * @param zipDirectory           the file/directory which is to be zipped
      * @param zipOutputStream        the ZipOutputStream instance
      * @param archiveSourceDirectory the source directory whose content are to be archived
-     * @throws IOException if an I/O error occurs
+     * @throws IOException                   if an I/O error occurs
+     * @throws JarToBundleConverterException if file path(s) have no elements
      */
     private static void zipDirectory(Path zipDirectory, ZipOutputStream zipOutputStream, Path archiveSourceDirectory)
-            throws IOException {
+            throws IOException, JarToBundleConverterException {
         // get a listing of the directory content
         List<Path> directoryList = Utils.listFiles(zipDirectory);
         final int maximumByteSize = 40960;
         byte[] readBuffer = new byte[maximumByteSize];
         int bytesIn;
+        Path directoryItemFile;
 
         // loop through directoryList, and zip the files
         for (Path aDirectoryItem : directoryList) {
             InputStream fileInputStream = null;
 
             try {
-                Path file = Paths.get(zipDirectory.toString(), aDirectoryItem.getFileName().toString());
-                // place the zip entry in the ZipOutputStream object
-                zipOutputStream.putNextEntry(new ZipEntry(getZipEntryPath(file, archiveSourceDirectory)));
-                if (Files.isDirectory(file)) {
+                directoryItemFile = aDirectoryItem.getFileName();
+                if (directoryItemFile != null) {
+                    Path file = Paths.get(zipDirectory.toString(), directoryItemFile.toString());
+                    // place the zip entry in the ZipOutputStream object
+                    zipOutputStream.putNextEntry(new ZipEntry(getZipEntryPath(file, archiveSourceDirectory)));
+                    if (Files.isDirectory(file)) {
                     /*
                         if the File object is a directory, call this
                         function again to add its content recursively
                     */
-                    zipDirectory(file, zipOutputStream, archiveSourceDirectory);
-                    // loop again
-                    continue;
-                }
+                        zipDirectory(file, zipOutputStream, archiveSourceDirectory);
+                        // loop again
+                        continue;
+                    }
 
                 /*
                     if we reached here, the File object file was not a directory
                     create an InputStream on top of file
                 */
-                fileInputStream = Files.newInputStream(file);
-                // now write the content of the file to the ZipOutputStream
-                while ((bytesIn = fileInputStream.read(readBuffer)) != -1) {
-                    zipOutputStream.write(readBuffer, 0, bytesIn);
+                    fileInputStream = Files.newInputStream(file);
+                    // now write the content of the file to the ZipOutputStream
+                    while ((bytesIn = fileInputStream.read(readBuffer)) != -1) {
+                        zipOutputStream.write(readBuffer, 0, bytesIn);
+                    }
+                } else {
+                    String message = "Path instance aDirectoryItem has no elements.";
+                    throw new JarToBundleConverterException(message);
                 }
             } finally {
                 if (fileInputStream != null) {

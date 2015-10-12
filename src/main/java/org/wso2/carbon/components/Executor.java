@@ -23,20 +23,21 @@ import org.wso2.carbon.components.interfaces.IJarToBundleConverter;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.Paths;
+import java.util.Locale;
 import java.util.Scanner;
 
 public class Executor {
 
-    private static final Scanner SCANNER = new Scanner(System.in);
+    private static final Scanner SCANNER = new Scanner(System.in, "UTF-8");
 
     public static void main(String[] args) {
-        try {
-            final IJarToBundleConverter jarToBundleConverter = new DefaultJarToBundleConverter();
+        final IJarToBundleConverter jarToBundleConverter = new DefaultJarToBundleConverter();
 
-            boolean loopAgain;
-            String source, destination;
-            Path sourcePath, destinationPath;
-            do {
+        boolean loopAgain;
+        String source, destination;
+        Path sourcePath, destinationPath;
+        do {
+            try {
                 System.out.print("Enter source path: ");
                 source = SCANNER.nextLine();
                 sourcePath = getUserInputPath(source);
@@ -68,11 +69,14 @@ public class Executor {
                     System.out.println("Invalid path(s). Please try again.");
                     loopAgain = continueProgram();
                 }
-            } while (loopAgain);
-        } catch (Exception e) {
-            System.out.println("An error has occurred during program execution.");
-            System.exit(1);
-        }
+            } catch (RuntimeException e) {
+                System.out.println("An error has occurred during the application runtime.");
+                loopAgain = continueProgram();
+            } catch (Exception e) {
+                loopAgain = false;
+                System.exit(1);
+            }
+        } while (loopAgain);
     }
 
     /**
@@ -99,8 +103,9 @@ public class Executor {
         System.out.print("Do you want to continue? (Y/N) ");
         String input = (SCANNER.next());
         SCANNER.nextLine();
-
-        input = input.toLowerCase();
+        // using the default system Locale
+        Locale defaultLocale = Locale.getDefault();
+        input = input.toLowerCase(defaultLocale);
         final int firstLetterIndex = 0;
         return (input.charAt(firstLetterIndex) == 'y');
     }

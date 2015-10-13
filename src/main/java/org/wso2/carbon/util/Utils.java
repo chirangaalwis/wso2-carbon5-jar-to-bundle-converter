@@ -127,31 +127,27 @@ public class Utils {
     public static void createBundle(Path jarFile, Path bundle, Manifest manifest) throws IOException {
         Path extractedDirectory = Paths
                 .get(JAR_TO_BUNDLE_DIRECTORY.toString(), ("" + System.currentTimeMillis() + Math.random()));
-        OutputStream manifestOutputStream = null;
-        OutputStream p2InfOutputStream = null;
+        if (!Files.exists(extractedDirectory)) {
+            Files.createDirectories(extractedDirectory);
+        }
 
-        try {
-            if (!Files.exists(extractedDirectory)) {
-                Files.createDirectories(extractedDirectory);
-            }
+        Utils.copyFileToDirectory(jarFile, extractedDirectory);
+        LOG.info("Copied the JAR file[%s] to the OSGi bundle.", jarFile.toString());
+        Path manifestDirectory = Paths.get(extractedDirectory.toString(), "META-INF");
+        if (!Files.exists(manifestDirectory)) {
+            Files.createDirectories(manifestDirectory);
+        }
 
-            Utils.copyFileToDirectory(jarFile, extractedDirectory);
-            LOG.info("Copied the JAR file[%s] to the OSGi bundle.", jarFile.toString());
-            Path manifestDirectory = Paths.get(extractedDirectory.toString(), "META-INF");
-            if (!Files.exists(manifestDirectory)) {
-                Files.createDirectories(manifestDirectory);
-            }
+        Path manifestFile = Paths.get(extractedDirectory.toString(), "META-INF", "MANIFEST.MF");
+        Path p2InfFile = Paths.get(extractedDirectory.toString(), "META-INF", "p2.inf");
+        if (!Files.exists(p2InfFile)) {
+            Files.createFile(p2InfFile);
+        }
 
-            Path manifestFile = Paths.get(extractedDirectory.toString(), "META-INF", "MANIFEST.MF");
-            manifestOutputStream = Files.newOutputStream(manifestFile);
+        try (OutputStream manifestOutputStream = Files.newOutputStream(manifestFile);
+                OutputStream p2InfOutputStream = Files.newOutputStream(p2InfFile)) {
             manifest.write(manifestOutputStream);
             LOG.info("Generated the OSGi bundle MANIFEST.MF for the JAR file[%s]", jarFile.toString());
-
-            Path p2InfFile = Paths.get(extractedDirectory.toString(), "META-INF", "p2.inf");
-            if (!Files.exists(p2InfFile)) {
-                Files.createFile(p2InfFile);
-            }
-            p2InfOutputStream = Files.newOutputStream(p2InfFile);
             p2InfOutputStream
                     .write("instructions.configure=markStarted(started:true);".getBytes(Charset.forName("UTF-8")));
             p2InfOutputStream.flush();
@@ -167,17 +163,6 @@ public class Utils {
             LOG.debug(
                     "Deleted the temporary directory[%s] used to hold unarchived OSGi directories during the conversion.",
                     extractedDirectory.toString());
-        } finally {
-            if (manifestOutputStream != null) {
-                LOG.debug("Closing the Output Stream for the MANIFEST.MF file.");
-                manifestOutputStream.close();
-                LOG.debug("Closed the Output Stream for the MANIFEST.MF file.");
-            }
-            if (p2InfOutputStream != null) {
-                LOG.debug("Closing the Output Stream for the p2.inf file.");
-                p2InfOutputStream.close();
-                LOG.debug("Closed the Output Stream for the p2.inf file.");
-            }
         }
     }
 
@@ -253,20 +238,12 @@ public class Utils {
             throw new RuntimeException(message);
         }
 
-        ZipOutputStream zipOutputStream = null;
-        try {
-            zipOutputStream = new ZipOutputStream(Files.newOutputStream(destinationArchive));
+        try (ZipOutputStream zipOutputStream = new ZipOutputStream(Files.newOutputStream(destinationArchive))) {
             LOG.debug("Zipping the source directory[%s] content to the destination[%s].", sourceDirectory.toString(),
                     destinationArchive.toString());
             zipDirectory(sourceDirectory, zipOutputStream, sourceDirectory);
             LOG.debug("Zipped the source directory[%s] content to the destination[%s].", sourceDirectory.toString(),
                     destinationArchive.toString());
-        } finally {
-            if (zipOutputStream != null) {
-                LOG.debug("Closing the Zip Output Stream used to archive the source directory to the destination.");
-                zipOutputStream.close();
-                LOG.debug("Closed the Zip Output Stream used to archive the source directory to the destination.");
-            }
         }
     }
 
@@ -290,29 +267,26 @@ public class Utils {
         // loop through directoryList, and zip the files
         LOG.debug("Started looping through the content in the directory[%s].", zipDirectory.toString());
         for (Path aDirectoryItem : directoryList) {
-            InputStream fileInputStream = null;
-
-            try {
-                directoryItemFile = aDirectoryItem.getFileName();
-                if (directoryItemFile != null) {
-                    Path file = Paths.get(zipDirectory.toString(), directoryItemFile.toString());
-                    // place the zip entry in the ZipOutputStream object
-                    zipOutputStream.putNextEntry(new ZipEntry(getZipEntryPath(file, archiveSourceDirectory)));
-                    if (Files.isDirectory(file)) {
+            directoryItemFile = aDirectoryItem.getFileName();
+            if (directoryItemFile != null) {
+                Path file = Paths.get(zipDirectory.toString(), directoryItemFile.toString());
+                // place the zip entry in the ZipOutputStream object
+                zipOutputStream.putNextEntry(new ZipEntry(getZipEntryPath(file, archiveSourceDirectory)));
+                if (Files.isDirectory(file)) {
                     /*
                         if the File object is a directory, call this
                         function again to add its content recursively
                     */
-                        zipDirectory(file, zipOutputStream, archiveSourceDirectory);
-                        // loop again
-                        continue;
-                    }
+                    zipDirectory(file, zipOutputStream, archiveSourceDirectory);
+                    // loop again
+                    continue;
+                }
 
-                    /*
-                        if we reached here, the File object file was not a directory
-                        create an InputStream on top of file
-                    */
-                    fileInputStream = Files.newInputStream(file);
+                /*
+                    if we reached here, the File object file was not a directory
+                    create an InputStream on top of file
+                */
+                try (InputStream fileInputStream = Files.newInputStream(file)) {
                     // now write the content of the file to the ZipOutputStream
                     LOG.debug("Writing the directory item[%s] to the destination and zipping the content.",
                             aDirectoryItem.toString());
@@ -321,14 +295,10 @@ public class Utils {
                     }
                     LOG.debug("Wrote the directory item[%s] to the destination and zipped the content.",
                             aDirectoryItem.toString());
-                } else {
-                    String message = "Path instance aDirectoryItem has no elements.";
-                    throw new RuntimeException(message);
                 }
-            } finally {
-                if (fileInputStream != null) {
-                    fileInputStream.close();
-                }
+            } else {
+                String message = "Path instance aDirectoryItem has no elements.";
+                throw new RuntimeException(message);
             }
         }
         LOG.debug("Finished looping through the content in the directory[%s].", zipDirectory.toString());
@@ -387,17 +357,9 @@ public class Utils {
      */
     public static List<Path> listFiles(Path directory) throws IOException {
         List<Path> files = new ArrayList<>();
-        DirectoryStream<Path> directoryStream = null;
-        try {
-            directoryStream = Files.newDirectoryStream(directory);
+        try (DirectoryStream<Path> directoryStream = Files.newDirectoryStream(directory)) {
             for (Path path : directoryStream) {
                 files.add(path);
-            }
-        } finally {
-            if (directoryStream != null) {
-                LOG.debug("Closing the Directory Stream for directory[%s].", directory.toString());
-                directoryStream.close();
-                LOG.debug("Closed the Directory Stream for directory[%s].", directory.toString());
             }
         }
         return files;
@@ -411,17 +373,10 @@ public class Utils {
      * @throws IOException if an I/O error occurs
      */
     public static String parseJar(Path jarFile) throws IOException {
-        List<String> exportedPackagesList;
+        List<String> exportedPackagesList = new ArrayList<>();
         List<ZipEntry> entries;
-        ZipInputStream zipInputStream = null;
-        try {
-            exportedPackagesList = new ArrayList<>();
-            zipInputStream = new ZipInputStream(Files.newInputStream(jarFile));
+        try (ZipInputStream zipInputStream = new ZipInputStream(Files.newInputStream(jarFile))) {
             entries = Utils.populateList(zipInputStream);
-        } finally {
-            if (zipInputStream != null) {
-                zipInputStream.close();
-            }
         }
 
         for (ZipEntry entry : entries) {

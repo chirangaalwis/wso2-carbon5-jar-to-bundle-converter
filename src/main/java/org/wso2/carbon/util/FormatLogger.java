@@ -19,6 +19,7 @@
 package org.wso2.carbon.util;
 
 import org.apache.logging.log4j.Level;
+import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
 
 /**
@@ -29,12 +30,12 @@ public class FormatLogger {
     private final Logger log;
 
     /**
-     * Constructs a new FormatLogger with the specified {@code Logger} instance
+     * Constructs a new FormatLogger for the specified Java class
      *
-     * @param log the {@link Logger} instance
+     * @param logClass the Java class for which the Logger is to be created
      */
-    public FormatLogger(Logger log) {
-        this.log = log;
+    public FormatLogger(Class logClass) {
+        this.log = LogManager.getLogger(logClass);
     }
 
     /**

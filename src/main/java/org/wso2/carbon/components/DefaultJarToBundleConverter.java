@@ -18,7 +18,6 @@
  */
 package org.wso2.carbon.components;
 
-import org.apache.logging.log4j.LogManager;
 import org.wso2.carbon.components.exceptions.JarToBundleConverterException;
 import org.wso2.carbon.components.interfaces.IJarToBundleConverter;
 import org.wso2.carbon.util.Constants;
@@ -33,7 +32,7 @@ import java.util.jar.Manifest;
 
 public class DefaultJarToBundleConverter implements IJarToBundleConverter {
 
-    private static final FormatLogger LOG = new FormatLogger(LogManager.getLogger(DefaultJarToBundleConverter.class));
+    private static final FormatLogger LOG = new FormatLogger(DefaultJarToBundleConverter.class);
 
     @Override public void convert(Path source, Path destination) throws JarToBundleConverterException {
         if (Files.isDirectory(destination)) {

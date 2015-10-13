@@ -22,6 +22,7 @@ package org.wso2.carbon.components.exceptions;
  * a custom Java class which extends the Java {@code Exception} class
  */
 public class JarToBundleConverterException extends Exception {
+
     private String message;
 
     /**
@@ -53,4 +54,5 @@ public class JarToBundleConverterException extends Exception {
     public String getMessage() {
         return message;
     }
+
 }

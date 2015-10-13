@@ -18,8 +18,6 @@
  */
 package org.wso2.carbon.util;
 
-import org.apache.logging.log4j.LogManager;
-
 import java.io.*;
 import java.nio.charset.Charset;
 import java.nio.file.DirectoryStream;
@@ -40,7 +38,7 @@ import java.util.zip.ZipOutputStream;
  */
 public class Utils {
 
-    private static final FormatLogger LOG = new FormatLogger(LogManager.getLogger(Utils.class));
+    private static final FormatLogger LOG = new FormatLogger(Utils.class);
 
     public static final Path JAR_TO_BUNDLE_DIRECTORY = Paths.get(System.getProperty("java.io.tmpdir"), "jarsToBundles");
 
@@ -137,7 +135,6 @@ public class Utils {
         if (!Files.exists(manifestDirectory)) {
             Files.createDirectories(manifestDirectory);
         }
-
         Path manifestFile = Paths.get(extractedDirectory.toString(), "META-INF", "MANIFEST.MF");
         Path p2InfFile = Paths.get(extractedDirectory.toString(), "META-INF", "p2.inf");
         if (!Files.exists(p2InfFile)) {

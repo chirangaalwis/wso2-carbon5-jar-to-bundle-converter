@@ -50,15 +50,16 @@ public class DefaultJarToBundleConverter implements IJarToBundleConverter {
                 }
             } catch (RuntimeException e) {
                 String message = String.format("Could not convert the file %s to a OSGi bundle.", source);
-                LOG.warn(message, e);
+                LOG.warn(e, message);
                 throw new JarToBundleConverterException(message);
             } catch (Exception e) {
                 String message = String.format("Could not convert the file %s to a OSGi bundle.", source);
-                LOG.error(message, e);
+                LOG.error(e, message);
                 throw new JarToBundleConverterException(message);
             }
         } else {
             String message = String.format("Path instance destination must refer to a directory.[%s]", source);
+            LOG.warn(message);
             throw new JarToBundleConverterException(message);
         }
     }

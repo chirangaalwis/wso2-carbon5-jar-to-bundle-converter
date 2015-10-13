@@ -29,7 +29,7 @@ public interface IJarToBundleConverter {
 
     /**
      * converts a given source JAR file or JAR files in the source
-     * directory to OSGi bundle(s) in a location specified by the destination directory
+     * directory to OSGi bundle(s) to a location specified by the destination directory
      *
      * @param source      source JAR file or directory containing JAR files to be converted to OSGi bundles
      * @param destination destination directory of the created OSGi bundle(s)

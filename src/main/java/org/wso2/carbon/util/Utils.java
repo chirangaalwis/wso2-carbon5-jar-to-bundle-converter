@@ -158,7 +158,15 @@ public class Utils {
             LOG.info("Generated the OSGi bundle p2.inf for the JAR file[%s]", jarFile.toString());
 
             Utils.archiveDirectory(bundle, extractedDirectory);
+            LOG.info("The JAR file[%s] has been archived as an OSGi bundle in the destination.", jarFile.toString());
+
+            LOG.debug(
+                    "Deleting the temporary directory[%s] used to hold unarchived OSGi directories during the conversion.",
+                    extractedDirectory.toString());
             Utils.deleteDirectory(extractedDirectory);
+            LOG.debug(
+                    "Deleted the temporary directory[%s] used to hold unarchived OSGi directories during the conversion.",
+                    extractedDirectory.toString());
         } finally {
             if (manifestOutputStream != null) {
                 LOG.debug("Closing the Output Stream for the MANIFEST.MF file.");
@@ -400,6 +408,7 @@ public class Utils {
      *
      * @param jarFile the JAR file of which the package name list is to be returned
      * @return a list of Java package names within the JAR file, separated by a comma
+     * @throws IOException if an I/O error occurs
      */
     public static String parseJar(Path jarFile) throws IOException {
         List<String> exportedPackagesList;
@@ -439,6 +448,8 @@ public class Utils {
                 exportedPackages.append(",");
             }
         }
+
+        LOG.debug("Returning a comma separated list of exported packages from the JAR file[%s].", jarFile.toString());
         return exportedPackages.toString();
     }
 

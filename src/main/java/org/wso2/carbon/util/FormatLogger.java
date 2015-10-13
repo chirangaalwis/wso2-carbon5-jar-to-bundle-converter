@@ -69,16 +69,6 @@ public class FormatLogger {
     }
 
     /**
-     * Logs a formatted {@code String} value at the ERROR Log level
-     *
-     * @param formatter the {@link String} to be formatted
-     * @param args      the formatting arguments
-     */
-    public void error(String formatter, Object... args) {
-        log(Level.ERROR, formatter, args);
-    }
-
-    /**
      * Logs a formatted {@code String} value and {@code Throwable} instance at the WARN Log level
      *
      * @param throwable the {@link Throwable} object

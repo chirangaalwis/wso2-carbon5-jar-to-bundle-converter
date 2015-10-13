@@ -306,7 +306,7 @@ public class Utils {
      *
      * @param file             the file of which the file path relative to the {@code archiveSourceDir} is to be returned
      * @param archiveSourceDir the source directory to be archived which contains all the file content
-     * @return a {@code String} file path of {@code file} relative to the {@code archiveSourceDir}
+     * @return a {@link String} file path of {@code file} relative to the {@code archiveSourceDir}
      */
     private static String getZipEntryPath(Path file, Path archiveSourceDir) {
         String entryPath = file.toString();

@@ -16,4 +16,4 @@ Usage:
 
     Run the application with the following command:
 
-        java -cp uber-jar-to-bundle-converter-1.0-SNAPSHOT.jar org.wso2.carbon.components.DefaultExecutor
+        java -cp uber-jar-to-bundle-converter-1.0-SNAPSHOT.jar org.wso2.carbon.tool.components.DefaultExecutor

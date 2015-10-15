@@ -16,9 +16,9 @@
  *  under the License.
  *
  */
-package org.wso2.carbon.components.interfaces;
+package org.wso2.carbon.tool.components.interfaces;
 
-import org.wso2.carbon.components.exceptions.JarToBundleConverterException;
+import org.wso2.carbon.tool.components.exceptions.JarToBundleConverterException;
 
 import java.nio.file.Path;
 

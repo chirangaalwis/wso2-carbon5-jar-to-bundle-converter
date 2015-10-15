@@ -16,7 +16,7 @@
  *  under the License.
  *
  */
-package org.wso2.carbon.util;
+package org.wso2.carbon.tool.util;
 
 /**
  * a Java class which defines constants

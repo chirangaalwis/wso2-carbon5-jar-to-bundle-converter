@@ -16,9 +16,10 @@
  *  under the License.
  *
  */
-package org.wso2.carbon.components;
+package org.wso2.carbon.tool.components;
 
-import org.wso2.carbon.components.interfaces.IJarToBundleConverter;
+import org.wso2.carbon.tool.components.exceptions.JarToBundleConverterException;
+import org.wso2.carbon.tool.components.interfaces.IJarToBundleConverter;
 
 import java.nio.file.Files;
 import java.nio.file.Path;
@@ -69,7 +70,7 @@ public class DefaultExecutor {
                     System.out.println("Invalid path(s). Please try again.");
                     loopAgain = continueProgram();
                 }
-            } catch (RuntimeException e) {
+            } catch (JarToBundleConverterException e) {
                 System.out.println("An error has occurred during the application runtime.");
                 loopAgain = continueProgram();
             } catch (Exception e) {

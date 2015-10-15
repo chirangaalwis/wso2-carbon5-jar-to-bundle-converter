@@ -16,7 +16,7 @@
  *  under the License.
  *
  */
-package org.wso2.carbon.components.exceptions;
+package org.wso2.carbon.tool.components.exceptions;
 
 /**
  * a custom Java class which extends the Java {@code Exception} class
@@ -36,22 +36,11 @@ public class JarToBundleConverterException extends Exception {
     }
 
     /**
-     * Constructs a new exception with the specified detail message and the cause {@code Exception} instance
-     *
-     * @param message   the detail message of the exception
-     * @param exception the cause {@code Exception} instance
-     */
-    public JarToBundleConverterException(String message, Exception exception) {
-        super(message, exception);
-        this.message = message;
-    }
-
-    /**
      * Returns the specified detail message
      *
      * @return the specified detail message
      */
-    public String getMessage() {
+    @Override public String getMessage() {
         return message;
     }
 

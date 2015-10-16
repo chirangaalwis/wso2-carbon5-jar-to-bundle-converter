@@ -71,9 +71,11 @@ public class DefaultExecutor {
                     loopAgain = continueProgram();
                 }
             } catch (JarToBundleConverterException e) {
+                e.printStackTrace();
                 System.out.println("An error has occurred during the application runtime.");
                 loopAgain = continueProgram();
             } catch (Exception e) {
+                e.printStackTrace();
                 loopAgain = false;
                 System.exit(1);
             }

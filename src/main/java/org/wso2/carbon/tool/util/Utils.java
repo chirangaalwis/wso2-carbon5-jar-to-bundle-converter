@@ -20,23 +20,20 @@ package org.wso2.carbon.tool.util;
 
 import org.wso2.carbon.tool.components.exceptions.JarToBundleConverterException;
 
-import java.io.File;
 import java.io.IOException;
-import java.io.InputStream;
 import java.io.OutputStream;
+import java.net.URI;
 import java.nio.charset.Charset;
-import java.nio.file.DirectoryStream;
-import java.nio.file.Files;
-import java.nio.file.Path;
-import java.nio.file.Paths;
+import java.nio.file.*;
 import java.util.ArrayList;
+import java.util.HashMap;
 import java.util.List;
+import java.util.Map;
 import java.util.jar.Attributes;
 import java.util.jar.Manifest;
 import java.util.logging.Logger;
 import java.util.zip.ZipEntry;
 import java.util.zip.ZipInputStream;
-import java.util.zip.ZipOutputStream;
 
 /**
  * a Java class which contains utility methods utilized during the process of
@@ -45,7 +42,7 @@ import java.util.zip.ZipOutputStream;
 public class Utils {
 
     private static final Logger LOGGER = Logger.getLogger(Utils.class.getName());
-    public static final Path JAR_TO_BUNDLE_DIRECTORY = Paths.get(System.getProperty("java.io.tmpdir"), "jarsToBundles");
+    public static final Path JAR_TO_BUNDLE_DIRECTORY = Paths.get("jarsToBundles");
 
     /**
      * if exists, deletes the temporary directory which holds the unarchived bundle directories during the
@@ -75,8 +72,6 @@ public class Utils {
      */
     public static void convertFromJarToBundle(Path jarFile, Path targetDirectory, Manifest manifest,
             String extensionPrefix) throws IOException, JarToBundleConverterException {
-        LOGGER.info(String.format("Creating the OSGi bundle for JAR file[%s]", jarFile.toString()));
-
         if (manifest == null) {
             manifest = new Manifest();
         }
@@ -114,14 +109,19 @@ public class Utils {
                         attributes.getValue(Constants.BUNDLE_CLASSPATH), Constants.DYNAMIC_IMPORT_PACKAGE,
                         attributes.getValue(Constants.DYNAMIC_IMPORT_PACKAGE)));
 
-                LOGGER.fine(String.format("Creating an OSGi bundle for JAR file[%s], at target directory[%s].",
-                        tempJarFilePathHolder.toString(), extensionBundle.toString()));
-                Utils.createBundle(jarFile, extensionBundle, manifest);
-                LOGGER.fine(String.format("Created an OSGi bundle for JAR file[%s], at target directory[%s].",
-                        tempJarFilePathHolder.toString(), extensionBundle.toString()));
-
-                LOGGER.info(
-                        String.format("Created the OSGi bundle[%s] for JAR file[%s]", pluginName, jarFile.toString()));
+                if ((!Files.exists(extensionBundle)) && (!jarFile.getFileName().toString()
+                        .equals(extensionBundle.getFileName().toString()))) {
+                    LOGGER.info(String.format("Creating the OSGi bundle for JAR file[%s]", jarFile.toString()));
+                    LOGGER.fine(String.format("Creating an OSGi bundle for JAR file[%s], at target directory[%s].",
+                            tempJarFilePathHolder.toString(), extensionBundle.toString()));
+                    Utils.createBundle(jarFile, extensionBundle, manifest);
+                    LOGGER.fine(String.format("Created an OSGi bundle for JAR file[%s], at target directory[%s].",
+                            tempJarFilePathHolder.toString(), extensionBundle.toString()));
+                    LOGGER.info(String.format("Created the OSGi bundle[%s] for JAR file[%s]", pluginName,
+                            jarFile.toString()));
+                } else {
+                    LOGGER.info(String.format("OSGi bundle[%s] already exists in the target directory.", pluginName));
+                }
             }
         } else {
             String message = "Path representing the JAR file name has zero elements.";
@@ -158,214 +158,49 @@ public class Utils {
      */
     public static void createBundle(Path jarFile, Path bundlePath, Manifest manifest)
             throws IOException, JarToBundleConverterException {
-        Path extractedDirectory = Paths
-                .get(JAR_TO_BUNDLE_DIRECTORY.toString(), ("" + System.currentTimeMillis() + Math.random()));
-        if (!Files.exists(extractedDirectory)) {
-            Files.createDirectories(extractedDirectory);
-        }
+        if (manifest != null) {
+            Map<String, String> bundleJarProperties = new HashMap<>();
+            bundleJarProperties.put("create", "true");
+            bundleJarProperties.put("encoding", "UTF-8");
+            URI destinationBundleJar = URI.create(String.format("jar:file:%s", bundlePath.toString()));
 
-        Utils.copyFileToDirectory(jarFile, extractedDirectory);
-        Path manifestDirectory = Paths.get(extractedDirectory.toString(), "META-INF");
-        if (!Files.exists(manifestDirectory)) {
-            Files.createDirectories(manifestDirectory);
-        }
-        Path manifestFile = Paths.get(extractedDirectory.toString(), "META-INF", "MANIFEST.MF");
-        Path p2InfFile = Paths.get(extractedDirectory.toString(), "META-INF", "p2.inf");
-        if (!Files.exists(p2InfFile)) {
-            Files.createFile(p2InfFile);
-        }
-
-        try (OutputStream manifestOutputStream = Files.newOutputStream(manifestFile);
-                OutputStream p2InfOutputStream = Files.newOutputStream(p2InfFile)) {
-            manifest.write(manifestOutputStream);
-            LOGGER.fine(String.format("Generated the OSGi bundlePath MANIFEST.MF for the JAR file[%s]",
-                    jarFile.toString()));
-            p2InfOutputStream
-                    .write("instructions.configure=markStarted(started:true);".getBytes(Charset.forName("UTF-8")));
-            p2InfOutputStream.flush();
-            LOGGER.fine(String.format("Generated the OSGi bundlePath p2.inf for the JAR file[%s]", jarFile.toString()));
-
-            Utils.archiveDirectory(extractedDirectory, bundlePath);
-            LOGGER.fine(String.format("The JAR file[%s] has been archived as an OSGi bundlePath in the destination.",
-                    jarFile.toString()));
-
-            LOGGER.fine(String.format(
-                    "Deleting the temporary directory[%s] used to hold unarchived OSGi directories during the "
-                            + "conversion.", extractedDirectory.toString()));
-            Utils.deleteDirectory(extractedDirectory);
-            LOGGER.fine(String.format(
-                    "Deleted the temporary directory[%s] used to hold unarchived OSGi directories during the "
-                            + "conversion.", extractedDirectory.toString()));
-        }
-    }
-
-    /**
-     * Copies the {@code source} file to the specified {@code destination} directory
-     *
-     * @param source      the {@link Path} of the source file
-     * @param destination the {@link Path} of the destination directory
-     * @throws IOException                   if an I/O error occurs during the copying of the source file to the
-     *                                       destination
-     * @throws JarToBundleConverterException if the specified {@link Path} instances have no elements or if the
-     *                                       {@code source} and {@code destination} {@link Path} instances point to
-     *                                       invalid arguments
-     */
-    public static void copyFileToDirectory(Path source, Path destination)
-            throws IOException, JarToBundleConverterException {
-        Path file;
-        Path sourceFile;
-
-        if ((source != null) && (destination != null)) {
-            if (!Files.exists(destination)) {
-                if (Files.isDirectory(destination)) {
-                    // if the destination points to a non-existing directory
-                    Files.createDirectories(destination);
-                    sourceFile = source.getFileName();
-                    if (sourceFile != null) {
-                        file = Paths.get(destination.toString(), sourceFile.toString());
-                    } else {
-                        String message = "Path instance source has no elements.";
-                        throw new JarToBundleConverterException(message);
-                    }
-                } else {
-                    // if the destination points to a non-existing file
-                    String message = String
-                            .format("Path instance destination points to the file %s. Path instance destination cannot "
-                                    + "point to a file.", destination.toString());
-                    throw new JarToBundleConverterException(message);
-                }
-            } else {
-                if (Files.isDirectory(destination)) {
-                    // if the destination points to an existing directory
-                    sourceFile = source.getFileName();
-                    if (sourceFile != null) {
-                        file = Paths.get(destination.toString(), sourceFile.toString());
-                    } else {
-                        String message = "Path instance source source has no elements.";
-                        throw new JarToBundleConverterException(message);
-                    }
-                } else {
-                    // if the destination points to an existing file
-                    String message = String
-                            .format("Path instance destination points to the file %s. Path instance destination cannot "
-                                    + "point to a file.", destination.toString());
-                    throw new JarToBundleConverterException(message);
-                }
+            Path tempBundleHolder = Paths
+                    .get(JAR_TO_BUNDLE_DIRECTORY.toString(), ("" + System.currentTimeMillis() + Math.random()));
+            if (!Files.exists(tempBundleHolder)) {
+                Files.createDirectories(tempBundleHolder);
             }
+            Path manifestFile = Paths.get(tempBundleHolder.toString(), "MANIFEST.MF");
+            Path p2InfFile = Paths.get(tempBundleHolder.toString(), "p2.inf");
+            if (!Files.exists(p2InfFile)) {
+                Files.createFile(p2InfFile);
+            }
+            try (OutputStream manifestOutputStream = Files.newOutputStream(manifestFile);
+                    OutputStream p2InfOutputStream = Files.newOutputStream(p2InfFile);
+                    FileSystem zipFileSystem = FileSystems.newFileSystem(destinationBundleJar, bundleJarProperties)) {
+                manifest.write(manifestOutputStream);
+                LOGGER.fine(String.format("Generated the OSGi bundlePath MANIFEST.MF for the JAR file[%s]",
+                        jarFile.toString()));
+                p2InfOutputStream
+                        .write("instructions.configure=markStarted(started:true);".getBytes(Charset.forName("UTF-8")));
+                p2InfOutputStream.flush();
+                LOGGER.fine(
+                        String.format("Generated the OSGi bundlePath p2.inf for the JAR file[%s]", jarFile.toString()));
 
-            LOGGER.fine(String.format("Copying the source file[%s] to the destination[%s].", source.toString(),
-                    destination.toString()));
-            Files.copy(source, file);
-            LOGGER.fine(String.format("Copied the source file[%s] to the destination[%s]. Path to the copied file[%s].",
-                    source.toString(), destination.toString(), file.toString()));
+                Path manifestFolderPath = zipFileSystem.getPath("META-INF");
+                if (!Files.exists(manifestFolderPath)) {
+                    Files.createDirectories(manifestFolderPath);
+                }
+                Path manifestPathInBundle = zipFileSystem.getPath("META-INF", "MANIFEST.MF");
+                Path p2InfPathInBundle = zipFileSystem.getPath("META-INF", "p2.inf");
+                Files.copy(jarFile, zipFileSystem.getPath(jarFile.getFileName().toString()));
+                Files.copy(manifestFile, manifestPathInBundle);
+                Files.copy(p2InfFile, p2InfPathInBundle);
+                deleteDirectory(tempBundleHolder.getParent());
+            }
         } else {
-            String message = "Path instances source and destination cannot refer to null values.";
+            String message = "Manifest cannot refer to null.";
             throw new JarToBundleConverterException(message);
         }
-    }
-
-    /**
-     * Archives the specified {@code sourceDirectory} in the specified {@code destination} file path
-     *
-     * @param sourceDirectory    the source directory to be archived
-     * @param destinationArchive the {@link Path} to which the source directory should be archived
-     * @throws IOException                   if an I/O error occurs
-     * @throws JarToBundleConverterException if the {@code sourceDirectory} {@link Path} is not a directory
-     */
-    public static void archiveDirectory(Path sourceDirectory, Path destinationArchive)
-            throws IOException, JarToBundleConverterException {
-        if (!Files.isDirectory(sourceDirectory)) {
-            String message = String.format("%s is not a directory.", sourceDirectory);
-            throw new JarToBundleConverterException(message);
-        }
-
-        try (ZipOutputStream zipOutputStream = new ZipOutputStream(Files.newOutputStream(destinationArchive))) {
-            LOGGER.fine(String.format("Zipping the source directory[%s] content to the destination[%s].",
-                    sourceDirectory.toString(), destinationArchive.toString()));
-            zipDirectory(sourceDirectory, zipOutputStream, sourceDirectory);
-            LOGGER.fine(String.format("Zipped the source directory[%s] content to the destination[%s].",
-                    sourceDirectory.toString(), destinationArchive.toString()));
-        }
-    }
-
-    /**
-     * Zips the content of the specified file/directory in to the destination specified by the {@code ZipOutputStream}
-     *
-     * @param zipDirectory    the file/directory which is to be zipped
-     * @param zipOutputStream the ZipOutputStream instance
-     * @param sourceDirectory the source directory whose content are to be archived
-     * @throws IOException                   if an I/O error occurs
-     * @throws JarToBundleConverterException if {@link Path} instance(s) has no elements
-     */
-    private static void zipDirectory(Path zipDirectory, ZipOutputStream zipOutputStream, Path sourceDirectory)
-            throws IOException, JarToBundleConverterException {
-        // get a listing of the directory content
-        List<Path> directoryList = Utils.listFiles(zipDirectory);
-        final int maximumByteSize = 40960;
-        byte[] readBuffer = new byte[maximumByteSize];
-        int bytesIn;
-        Path directoryItemFile;
-        // loop through directoryList, and zip the files
-        LOGGER.fine(
-                String.format("Started looping through the content in the directory[%s].", zipDirectory.toString()));
-
-        for (Path aDirectoryItem : directoryList) {
-            directoryItemFile = aDirectoryItem.getFileName();
-
-            if (directoryItemFile != null) {
-                Path file = Paths.get(zipDirectory.toString(), directoryItemFile.toString());
-                // place the zip entry in the ZipOutputStream object
-                zipOutputStream.putNextEntry(new ZipEntry(getZipEntryPath(file, sourceDirectory)));
-                if (Files.isDirectory(file)) {
-                        /*
-                            if the File object is a directory, call this
-                            function again to add its content recursively
-                        */
-                    zipDirectory(file, zipOutputStream, sourceDirectory);
-                } else {
-                        /*
-                            if we reached here, the File object file was not a directory
-                            create an InputStream on top of file
-                        */
-                    try (InputStream fileInputStream = Files.newInputStream(file)) {
-                        // now write the content of the file to the ZipOutputStream
-                        LOGGER.fine(String.format(
-                                "Writing the directory item[%s] to the destination and zipping the content.",
-                                aDirectoryItem.toString()));
-                        while ((bytesIn = fileInputStream.read(readBuffer)) != -1) {
-                            zipOutputStream.write(readBuffer, 0, bytesIn);
-                        }
-                        LOGGER.fine(
-                                String.format("Wrote the directory item[%s] to the destination and zipped the content.",
-                                        aDirectoryItem.toString()));
-                    }
-                }
-            } else {
-                String message = "Path instance aDirectoryItem has no elements.";
-                throw new JarToBundleConverterException(message);
-            }
-        }
-        LOGGER.fine(
-                String.format("Finished looping through the content in the directory[%s].", zipDirectory.toString()));
-    }
-
-    /**
-     * Returns a {@code String} file path relative to the {@code sourceDirectory}
-     *
-     * @param file            the file of which the path relative to the {@code sourceDirectory} is to be returned
-     * @param sourceDirectory the source directory to be archived, which contains all the file content
-     * @return a {@link String} file path of {@code file} relative to the {@code sourceDirectory}
-     */
-    private static String getZipEntryPath(Path file, Path sourceDirectory) {
-        String entryPath = file.toString();
-        entryPath = entryPath.substring(sourceDirectory.toString().length() + 1);
-        if (File.separatorChar == '\\') {
-            entryPath = entryPath.replace(File.separatorChar, '/');
-        }
-        if (Files.isDirectory(file)) {
-            entryPath += "/";
-        }
-        return entryPath;
     }
 
     /**

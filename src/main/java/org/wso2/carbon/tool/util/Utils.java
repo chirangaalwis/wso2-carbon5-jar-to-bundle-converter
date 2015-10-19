@@ -42,7 +42,7 @@ import java.util.zip.ZipInputStream;
 public class Utils {
 
     private static final Logger LOGGER = Logger.getLogger(Utils.class.getName());
-    public static final Path JAR_TO_BUNDLE_DIRECTORY = Paths.get("jarsToBundles");
+    private static final Path JAR_TO_BUNDLE_DIRECTORY = Paths.get("jarsToBundles");
 
     /**
      * if exists, deletes the temporary directory which holds the unarchived bundle directories during the
@@ -51,7 +51,7 @@ public class Utils {
     static {
         try {
             if (Files.exists(JAR_TO_BUNDLE_DIRECTORY)) {
-                deleteDirectory(JAR_TO_BUNDLE_DIRECTORY);
+                delete(JAR_TO_BUNDLE_DIRECTORY);
             }
         } catch (IOException e) {
             String message = String.format("Failed to delete %s", JAR_TO_BUNDLE_DIRECTORY);
@@ -72,17 +72,29 @@ public class Utils {
      */
     public static void convertFromJarToBundle(Path jarFile, Path targetDirectory, Manifest manifest,
             String extensionPrefix) throws IOException, JarToBundleConverterException {
-        if (manifest == null) {
-            manifest = new Manifest();
+        // checks for validity of the arguments
+        if (!Files.isDirectory(targetDirectory)) {
+            String message = "Path target directory does not point to a directory.";
+            throw new JarToBundleConverterException(message);
+        } else {
+            Path tempJarFileParent = jarFile.getParent();
+            if ((tempJarFileParent != null) && (tempJarFileParent.equals(targetDirectory))) {
+                String message = "Paths JAR file parent directory and target directory cannot be the same.";
+                throw new JarToBundleConverterException(message);
+            }
         }
-        String exportedPackages = Utils.generateExportPackageList(Utils.listPackages(jarFile));
 
         Path tempJarFilePathHolder = jarFile.getFileName();
-        String fileName;
         if (tempJarFilePathHolder != null) {
-            fileName = tempJarFilePathHolder.toString();
-            fileName = fileName.replaceAll("-", "_");
+            String fileName = tempJarFilePathHolder.toString();
             if (fileName.endsWith(".jar")) {
+                if (manifest == null) {
+                    manifest = new Manifest();
+                }
+
+                String exportedPackages = Utils.generateExportPackageList(Utils.listPackages(jarFile));
+                fileName = fileName.replaceAll("-", "_");
+
                 fileName = fileName.substring(0, fileName.length() - 4);
                 String symbolicName = extensionPrefix + fileName;
                 String pluginName = extensionPrefix + fileName + "_1.0.0.jar";
@@ -109,8 +121,7 @@ public class Utils {
                         attributes.getValue(Constants.BUNDLE_CLASSPATH), Constants.DYNAMIC_IMPORT_PACKAGE,
                         attributes.getValue(Constants.DYNAMIC_IMPORT_PACKAGE)));
 
-                if ((!Files.exists(extensionBundle)) && (!jarFile.getFileName().toString()
-                        .equals(extensionBundle.getFileName().toString()))) {
+                if (!(Files.exists(extensionBundle))) {
                     LOGGER.info(String.format("Creating the OSGi bundle for JAR file[%s]", jarFile.toString()));
                     LOGGER.fine(String.format("Creating an OSGi bundle for JAR file[%s], at target directory[%s].",
                             tempJarFilePathHolder.toString(), extensionBundle.toString()));
@@ -122,6 +133,9 @@ public class Utils {
                 } else {
                     LOGGER.info(String.format("OSGi bundle[%s] already exists in the target directory.", pluginName));
                 }
+            } else {
+                String message = "Path jarFile does not point to a JAR file.";
+                throw new JarToBundleConverterException(message);
             }
         } else {
             String message = "Path representing the JAR file name has zero elements.";
@@ -137,10 +151,12 @@ public class Utils {
      */
     private static String generateExportPackageList(List<String> packageNames) {
         StringBuilder exportedPackages = new StringBuilder();
-        for (int packageCount = 0; packageCount < packageNames.size(); packageCount++) {
-            exportedPackages.append(packageNames.get(packageCount));
-            if (packageCount != (packageNames.size() - 1)) {
-                exportedPackages.append(",");
+        if (packageNames != null) {
+            for (int packageCount = 0; packageCount < packageNames.size(); packageCount++) {
+                exportedPackages.append(packageNames.get(packageCount));
+                if (packageCount != (packageNames.size() - 1)) {
+                    exportedPackages.append(",");
+                }
             }
         }
         return exportedPackages.toString();
@@ -158,72 +174,81 @@ public class Utils {
      */
     public static void createBundle(Path jarFile, Path bundlePath, Manifest manifest)
             throws IOException, JarToBundleConverterException {
-        if (manifest != null) {
-            Map<String, String> bundleJarProperties = new HashMap<>();
-            bundleJarProperties.put("create", "true");
-            bundleJarProperties.put("encoding", "UTF-8");
-            URI destinationBundleJar = URI.create(String.format("jar:file:%s", bundlePath.toString()));
+        Path tempJarFilePathHolder = jarFile.getFileName();
+        if (tempJarFilePathHolder != null) {
+            if (manifest != null) {
+                Map<String, String> bundleJarProperties = new HashMap<>();
+                bundleJarProperties.put("create", "true");
+                bundleJarProperties.put("encoding", "UTF-8");
+                URI destinationBundleJar = URI.create(String.format("jar:file:%s", bundlePath.toString()));
 
-            Path tempBundleHolder = Paths
-                    .get(JAR_TO_BUNDLE_DIRECTORY.toString(), ("" + System.currentTimeMillis() + Math.random()));
-            if (!Files.exists(tempBundleHolder)) {
-                Files.createDirectories(tempBundleHolder);
-            }
-            Path manifestFile = Paths.get(tempBundleHolder.toString(), "MANIFEST.MF");
-            Path p2InfFile = Paths.get(tempBundleHolder.toString(), "p2.inf");
-            if (!Files.exists(p2InfFile)) {
-                Files.createFile(p2InfFile);
-            }
-            try (OutputStream manifestOutputStream = Files.newOutputStream(manifestFile);
-                    OutputStream p2InfOutputStream = Files.newOutputStream(p2InfFile);
-                    FileSystem zipFileSystem = FileSystems.newFileSystem(destinationBundleJar, bundleJarProperties)) {
-                manifest.write(manifestOutputStream);
-                LOGGER.fine(String.format("Generated the OSGi bundlePath MANIFEST.MF for the JAR file[%s]",
-                        jarFile.toString()));
-                p2InfOutputStream
-                        .write("instructions.configure=markStarted(started:true);".getBytes(Charset.forName("UTF-8")));
-                p2InfOutputStream.flush();
-                LOGGER.fine(
-                        String.format("Generated the OSGi bundlePath p2.inf for the JAR file[%s]", jarFile.toString()));
-
-                Path manifestFolderPath = zipFileSystem.getPath("META-INF");
-                if (!Files.exists(manifestFolderPath)) {
-                    Files.createDirectories(manifestFolderPath);
+                Path tempBundleHolder = Paths
+                        .get(JAR_TO_BUNDLE_DIRECTORY.toString(), ("" + System.currentTimeMillis() + Math.random()));
+                if (!Files.exists(tempBundleHolder)) {
+                    Files.createDirectories(tempBundleHolder);
                 }
-                Path manifestPathInBundle = zipFileSystem.getPath("META-INF", "MANIFEST.MF");
-                Path p2InfPathInBundle = zipFileSystem.getPath("META-INF", "p2.inf");
-                Files.copy(jarFile, zipFileSystem.getPath(jarFile.getFileName().toString()));
-                Files.copy(manifestFile, manifestPathInBundle);
-                Files.copy(p2InfFile, p2InfPathInBundle);
-                deleteDirectory(tempBundleHolder.getParent());
+                Path manifestFile = Paths.get(tempBundleHolder.toString(), "MANIFEST.MF");
+                Path p2InfFile = Paths.get(tempBundleHolder.toString(), "p2.inf");
+                if (!Files.exists(p2InfFile)) {
+                    Files.createFile(p2InfFile);
+                }
+                try (OutputStream manifestOutputStream = Files.newOutputStream(manifestFile);
+                        OutputStream p2InfOutputStream = Files.newOutputStream(p2InfFile);
+                        FileSystem zipFileSystem = FileSystems
+                                .newFileSystem(destinationBundleJar, bundleJarProperties)) {
+                    manifest.write(manifestOutputStream);
+                    LOGGER.fine(String.format("Generated the OSGi bundlePath MANIFEST.MF for the JAR file[%s]",
+                            jarFile.toString()));
+                    p2InfOutputStream.write("instructions.configure=markStarted(started:true);"
+                            .getBytes(Charset.forName("UTF-8")));
+                    p2InfOutputStream.flush();
+                    LOGGER.fine(String.format("Generated the OSGi bundlePath p2.inf for the JAR file[%s]",
+                            jarFile.toString()));
+
+                    Path manifestFolderPath = zipFileSystem.getPath("META-INF");
+                    if (!Files.exists(manifestFolderPath)) {
+                        Files.createDirectories(manifestFolderPath);
+                    }
+                    Path manifestPathInBundle = zipFileSystem.getPath("META-INF", "MANIFEST.MF");
+                    Path p2InfPathInBundle = zipFileSystem.getPath("META-INF", "p2.inf");
+                    Files.copy(jarFile, zipFileSystem.getPath(tempJarFilePathHolder.toString()));
+                    Files.copy(manifestFile, manifestPathInBundle);
+                    Files.copy(p2InfFile, p2InfPathInBundle);
+
+                    // deletes the temporary holder of unarchived OSGi bundle
+                    Path tempBundleHolderParent = tempBundleHolder.getParent();
+                    if (tempBundleHolderParent != null) {
+                        delete(tempBundleHolderParent);
+                    }
+                }
+            } else {
+                String message = "Manifest cannot refer to null.";
+                throw new JarToBundleConverterException(message);
             }
         } else {
-            String message = "Manifest cannot refer to null.";
+            String message = "Path representing the JAR file name has zero elements.";
             throw new JarToBundleConverterException(message);
         }
     }
 
     /**
-     * Deletes the directory and its child content
+     * Deletes the specified file or the directory and its child content
      *
-     * @param directory the {@link Path} to the directory to be deleted
+     * @param path the {@link Path} to the file or the directory and its child content to be deleted
      * @return true if successfully deleted, else false
-     * @throws IOException if an I/O error occurs during the directory deletion
+     * @throws IOException if an I/O error occurs during the deletion
      */
-    public static boolean deleteDirectory(Path directory) throws IOException {
-        if (Files.isDirectory(directory)) {
-            List<Path> children = Utils.listFiles(directory);
+    public static boolean delete(Path path) throws IOException {
+        if (Files.isDirectory(path)) {
+            List<Path> children = Utils.listFiles(path);
             if (children.size() > 0) {
                 for (Path aChild : children) {
-                    boolean success = deleteDirectory(aChild);
-                    if (!success) {
-                        return false;
-                    }
+                    delete(aChild);
                 }
             }
         }
-        LOGGER.fine(String.format("Deleting %s.", directory));
-        return Files.deleteIfExists(directory);
+        LOGGER.fine(String.format("Deleting %s.", path));
+        return Files.deleteIfExists(path);
     }
 
     /**

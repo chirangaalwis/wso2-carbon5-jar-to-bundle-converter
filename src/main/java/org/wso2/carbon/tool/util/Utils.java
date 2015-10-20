@@ -25,6 +25,7 @@ import java.io.OutputStream;
 import java.net.URI;
 import java.nio.charset.Charset;
 import java.nio.file.*;
+import java.nio.file.attribute.BasicFileAttributes;
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
@@ -32,8 +33,6 @@ import java.util.Map;
 import java.util.jar.Attributes;
 import java.util.jar.Manifest;
 import java.util.logging.Logger;
-import java.util.zip.ZipEntry;
-import java.util.zip.ZipInputStream;
 
 /**
  * a Java class which contains utility methods utilized during the process of
@@ -177,11 +176,6 @@ public class Utils {
         Path tempJarFilePathHolder = jarFile.getFileName();
         if (tempJarFilePathHolder != null) {
             if (manifest != null) {
-                Map<String, String> bundleJarProperties = new HashMap<>();
-                bundleJarProperties.put("create", "true");
-                bundleJarProperties.put("encoding", "UTF-8");
-                URI destinationBundleJar = URI.create(String.format("jar:file:%s", bundlePath.toString()));
-
                 Path tempBundleHolder = Paths
                         .get(JAR_TO_BUNDLE_DIRECTORY.toString(), ("" + System.currentTimeMillis() + Math.random()));
                 if (!Files.exists(tempBundleHolder)) {
@@ -194,8 +188,7 @@ public class Utils {
                 }
                 try (OutputStream manifestOutputStream = Files.newOutputStream(manifestFile);
                         OutputStream p2InfOutputStream = Files.newOutputStream(p2InfFile);
-                        FileSystem zipFileSystem = FileSystems
-                                .newFileSystem(destinationBundleJar, bundleJarProperties)) {
+                        FileSystem zipFileSystem = createZipFileSystem(bundlePath, true)) {
                     manifest.write(manifestOutputStream);
                     LOGGER.fine(String.format("Generated the OSGi bundlePath MANIFEST.MF for the JAR file[%s]",
                             jarFile.toString()));
@@ -271,22 +264,19 @@ public class Utils {
      *
      * @param jarFile the JAR file of which the package name list is to be returned
      * @return a {@link List} of {@link String} Java package names within the JAR file
-     * @throws IOException if an I/O error occurs
+     * @throws IOException                   if an I/O error occurs
+     * @throws JarToBundleConverterException if an error occurs when retrieving child content from the {@code jarFile}
      */
-    public static List<String> listPackages(Path jarFile) throws IOException {
+    public static List<String> listPackages(Path jarFile) throws IOException, JarToBundleConverterException {
         List<String> exportedPackagesList = new ArrayList<>();
-        List<ZipEntry> entries;
-        try (ZipInputStream zipInputStream = new ZipInputStream(Files.newInputStream(jarFile))) {
-            entries = Utils.populateList(zipInputStream);
-        }
-
-        entries.forEach(zipEntry -> {
-            String path = zipEntry.getName();
+        List<Path> content = Utils.populateList(jarFile);
+        content.forEach(zipChild -> {
+            String path = zipChild.toString();
             if (!path.endsWith("/") && path.endsWith(".class")) {
                 //This is package that contains classes. Thus, exportedPackagesList
                 int index = path.lastIndexOf('/');
                 if (index != -1) {
-                    path = path.substring(0, index);
+                    path = path.substring(1, index);
                     path = path.replaceAll("/", ".");
                     if (!exportedPackagesList.contains(path)) {
                         exportedPackagesList.add(path);
@@ -300,23 +290,87 @@ public class Utils {
     }
 
     /**
-     * returns a list of content in the zip file corresponding to the {@code ZipInputStream} instance in the
-     * form of {@code ZipEntry} instances
+     * returns a list of content in the .zip or .jar file corresponding to the {@code zipFilePath Path} instance, in the
+     * form of {@code Path} instances
      *
-     * @param zipInputStream the {@link ZipInputStream} instance
-     * @return a list of content in the zip file corresponding to the {@link ZipInputStream} instance in the
-     * form of {@link ZipEntry} instances
+     * @param zipFilePath the {@link Path} to the .zip or .jar file
+     * @return a list of content in the .zip or .jar file in the form of a {@link List} of {@link Path} instances
+     * @throws IOException                   if an I/O error occurs
+     * @throws JarToBundleConverterException if a non-existent {@link Path} instance or a {@link Path} instance of
+     *                                       invalid file format is given or if the {@link Path} representing the zip
+     *                                       file name has zero elements
      */
-    private static List<ZipEntry> populateList(ZipInputStream zipInputStream) throws IOException {
-        List<ZipEntry> listEntry;
-        listEntry = new ArrayList<>();
-        while (zipInputStream.available() == 1) {
-            ZipEntry entry = zipInputStream.getNextEntry();
-            if (entry == null) {
-                break;
+    private static List<Path> populateList(Path zipFilePath) throws IOException, JarToBundleConverterException {
+        List<Path> zipFileContent = new ArrayList<>();
+        if (Files.exists(zipFilePath)) {
+            Path zipFileName = zipFilePath.getFileName();
+            if (zipFileName != null) {
+                if ((!Files.isDirectory(zipFilePath)) && (zipFileName.endsWith(".zip") || zipFileName
+                        .endsWith(".jar"))) {
+                    try (FileSystem zipFileSystem = createZipFileSystem(zipFilePath, false)) {
+                        Path root = zipFileSystem.getPath("/");
+
+                        //walk the file tree and print out the directory and filenames
+                        Files.walkFileTree(root, new SimpleFileVisitor<Path>() {
+                            @Override public FileVisitResult visitFile(Path file, BasicFileAttributes attrs)
+                                    throws IOException {
+                                zipFileContent.add(file);
+                                return FileVisitResult.CONTINUE;
+                            }
+
+                            @Override public FileVisitResult preVisitDirectory(Path dir, BasicFileAttributes attrs)
+                                    throws IOException {
+                                zipFileContent.add(dir);
+                                return FileVisitResult.CONTINUE;
+                            }
+                        });
+                    }
+                } else {
+                    String message = "Path zipFilePath may not exist or may not refer to a .zip or .jar file.";
+                    throw new JarToBundleConverterException(message);
+                }
             }
-            listEntry.add(entry);
+        } else {
+            String message = "Path represented by the zipFilePath does not exist.";
+            throw new JarToBundleConverterException(message);
         }
-        return listEntry;
+
+        return zipFileContent;
+    }
+
+    /**
+     * Creates a new {@code FileSystem} instance for the .zip or .jar file specified
+     *
+     * @param zipFilePath the {@link Path} to the .zip or .jar file, from which a {@link FileSystem}
+     *                    instance is to be created
+     * @param create      true if a file is to be created at the specified {@link Path}, else false
+     * @return the new {@code FileSystem} instance for the .zip or .jar file specified
+     * @throws IOException                   if an I/O error occurs creating the file system
+     * @throws JarToBundleConverterException if the specified {@link Path} file format is not .zip or .jar or
+     *                                       if the {@link Path} representing the zip file name has zero elements
+     */
+    private static FileSystem createZipFileSystem(Path zipFilePath, boolean create)
+            throws IOException, JarToBundleConverterException {
+        Path zipFileName = zipFilePath.getFileName();
+        if (zipFileName != null) {
+            if ((zipFileName.endsWith(".zip")) || (zipFileName.endsWith(".jar"))) {
+                Map<String, String> bundleJarProperties = new HashMap<>();
+                if (create) {
+                    bundleJarProperties.put("create", "true");
+                } else {
+                    bundleJarProperties.put("create", "false");
+                }
+                bundleJarProperties.put("encoding", "UTF-8");
+                // convert the filename to a URI
+                URI zipFileIURI = URI.create(String.format("jar:file:%s", zipFilePath.toString()));
+                return FileSystems.newFileSystem(zipFileIURI, bundleJarProperties);
+            } else {
+                String message = "Path zipFilePath does not refer to a .zip or .jar file.";
+                throw new JarToBundleConverterException(message);
+            }
+        } else {
+            String message = "Path representing the zip file name has zero elements.";
+            throw new JarToBundleConverterException(message);
+        }
     }
 }

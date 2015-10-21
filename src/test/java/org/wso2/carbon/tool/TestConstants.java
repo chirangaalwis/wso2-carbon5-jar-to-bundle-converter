@@ -24,4 +24,6 @@ public class TestConstants {
     protected static final String CHILD_TEST_FILE_ONE = "sampleOne.txt";
     protected static final String CHILD_TEST_FILE_TWO = "sampleTwo.txt";
     protected static final String CHILD_TEST_DIRECTORY_ONE = "sampleOne";
+
+    protected static final String NON_EXISTING_JAR_FILE = "test.jar";
 }

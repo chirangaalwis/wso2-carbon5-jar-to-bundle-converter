@@ -18,10 +18,10 @@
  */
 package org.wso2.carbon.tool;
 
-import static org.junit.Assert.*;
-
 import org.junit.Test;
 import org.wso2.carbon.tool.util.Utils;
+
+import static org.junit.Assert.assertTrue;
 
 import java.io.IOException;
 import java.nio.file.Files;

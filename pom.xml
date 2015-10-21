@@ -31,7 +31,7 @@
                     <archive>
                         <manifest>
                             <addClasspath>true</addClasspath>
-                            <mainClass>org.wso2.carbon.tool.components.DefaultExecutor</mainClass>
+                            <!--<mainClass>org.wso2.carbon.tool.components.DefaultExecutor</mainClass>-->
                         </manifest>
                     </archive>
                 </configuration>
@@ -89,7 +89,7 @@
                     </execution>
                 </executions>
             </plugin>
-            <!--<plugin>
+            <plugin>
                 <groupId>org.apache.maven.plugins</groupId>
                 <artifactId>maven-checkstyle-plugin</artifactId>
                 <executions>
@@ -113,7 +113,7 @@
                         </goals>
                     </execution>
                 </executions>
-            </plugin>-->
+            </plugin>
         </plugins>
     </build>
 

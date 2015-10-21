@@ -68,4 +68,8 @@ public class TestUtils {
         return paths;
     }
 
+    protected static boolean exists(String value, List<String> list) {
+        return ((list != null) && (list.contains(value)));
+    }
+
 }

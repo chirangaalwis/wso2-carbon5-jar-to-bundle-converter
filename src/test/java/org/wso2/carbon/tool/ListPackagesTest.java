@@ -32,7 +32,7 @@ public class ListPackagesTest {
 
     @Test(expected = JarToBundleConverterException.class) public void zipFileExistTest()
             throws JarToBundleConverterException, IOException {
-        Path nonExistingJarFile = Paths.get("test.jar");
+        Path nonExistingJarFile = Paths.get(TestConstants.NON_EXISTING_JAR_FILE);
         Utils.listZipFileContent(nonExistingJarFile);
     }
 
@@ -45,12 +45,12 @@ public class ListPackagesTest {
         try {
             actual = Utils.listPackages(jarFile);
         } catch (IOException | JarToBundleConverterException e) {
-            e.printStackTrace();
+            assert false;
         }
 
         if ((actual != null) && (expected.size() == actual.size())) {
             for (String packageName : expected) {
-                boolean exists = exists(packageName, actual);
+                boolean exists = TestUtils.exists(packageName, actual);
                 if (!exists) {
                     assert false;
                 }
@@ -69,9 +69,5 @@ public class ListPackagesTest {
         packages.add("org.wso2.carbon.tool.util");
 
         return packages;
-    }
-
-    private boolean exists(String value, List<String> list) {
-        return ((list != null) && (list.contains(value)));
     }
 }

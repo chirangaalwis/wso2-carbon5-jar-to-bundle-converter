@@ -24,7 +24,14 @@ import java.io.IOException;
 import java.io.OutputStream;
 import java.net.URI;
 import java.nio.charset.Charset;
-import java.nio.file.*;
+import java.nio.file.DirectoryStream;
+import java.nio.file.FileSystem;
+import java.nio.file.FileSystems;
+import java.nio.file.FileVisitResult;
+import java.nio.file.Files;
+import java.nio.file.Path;
+import java.nio.file.Paths;
+import java.nio.file.SimpleFileVisitor;
 import java.nio.file.attribute.BasicFileAttributes;
 import java.util.ArrayList;
 import java.util.HashMap;
@@ -59,7 +66,7 @@ public class Utils {
     }
 
     /**
-     * Creates an OSGi bundle out of a JAR file
+     * Converts a specified JAR file to an OSGi bundle at the specified destination
      *
      * @param jarFile         the JAR file to be bundled
      * @param targetDirectory the directory into which the created OSGi bundle needs to be placed
@@ -162,7 +169,7 @@ public class Utils {
     }
 
     /**
-     * Creates an OSGi bundlePath out of a JAR file
+     * Creates an OSGi bundle out of a JAR file
      *
      * @param jarFile    the JAR file to be bundled
      * @param bundlePath the directory into which the created OSGi bundlePath needs to be placed into

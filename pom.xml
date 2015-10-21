@@ -31,7 +31,7 @@
                     <archive>
                         <manifest>
                             <addClasspath>true</addClasspath>
-                            <!--<mainClass>org.wso2.carbon.tool.components.DefaultExecutor</mainClass>-->
+                            <mainClass>org.wso2.carbon.tool.components.BundleGenerator</mainClass>
                         </manifest>
                     </archive>
                 </configuration>

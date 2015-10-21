@@ -49,26 +49,34 @@ public class BundleGenerator {
             Path destination = getPath(args[destinationIndex]);
 
             if ((source != null) && (destination != null)) {
-                if (Files.isDirectory(destination)) {
-                    try {
-                        if (!Files.isDirectory(source)) {
-                            BundleGeneratorUtils.convertFromJarToBundle(source, destination, new Manifest(), "");
-                        } else {
-                            List<Path> directoryContent = BundleGeneratorUtils.listFiles(source);
-                            for (Path aDirectoryItem : directoryContent) {
-                                if (aDirectoryItem.toString().endsWith(".jar")) {
-                                    BundleGeneratorUtils
-                                            .convertFromJarToBundle(aDirectoryItem, destination, new Manifest(), "");
+                if ((Files.isReadable(source)) && (Files.isWritable(destination))) {
+                    if (Files.isDirectory(destination)) {
+                        try {
+                            if (!Files.isDirectory(source)) {
+                                BundleGeneratorUtils.convertFromJarToBundle(source, destination, new Manifest(), "");
+                            } else {
+                                List<Path> directoryContent = BundleGeneratorUtils.listFiles(source);
+                                for (Path aDirectoryItem : directoryContent) {
+                                    if (aDirectoryItem.toString().endsWith(".jar")) {
+                                        BundleGeneratorUtils
+                                                .convertFromJarToBundle(aDirectoryItem, destination, new Manifest(),
+                                                        "");
+                                    }
                                 }
                             }
+                        } catch (IOException | JarToBundleConverterException e) {
+                            String message = "An error has occurred during the conversion. Please try again.";
+                            LOGGER.info(message);
+                            LOGGER.fine(e.getMessage());
                         }
-                    } catch (IOException | JarToBundleConverterException e) {
-                        String message = "An error has occurred during the conversion. Please try again.";
+                    } else {
+                        String message = "The destination file path is not a directory.";
                         LOGGER.info(message);
-                        LOGGER.fine(e.getMessage());
                     }
                 } else {
-                    String message = "The destination file path is not a directory.";
+                    String message =
+                            "The source location and/or bundle destination may not have appropriate read/write "
+                                    + "permissions.";
                     LOGGER.info(message);
                 }
             } else {

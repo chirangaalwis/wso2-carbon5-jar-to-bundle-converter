@@ -19,8 +19,8 @@
 package org.wso2.carbon.tool;
 
 import org.junit.Test;
-import org.wso2.carbon.tool.components.exceptions.JarToBundleConverterException;
-import org.wso2.carbon.tool.util.Utils;
+import org.wso2.carbon.tool.exceptions.JarToBundleConverterException;
+import org.wso2.carbon.tool.util.BundleGeneratorUtils;
 
 import java.io.IOException;
 import java.nio.file.Path;
@@ -33,7 +33,7 @@ public class ListPackagesTest {
     @Test(expected = JarToBundleConverterException.class) public void zipFileExistTest()
             throws JarToBundleConverterException, IOException {
         Path nonExistingJarFile = Paths.get(TestConstants.NON_EXISTING_JAR_FILE);
-        Utils.listZipFileContent(nonExistingJarFile);
+        BundleGeneratorUtils.listZipFileContent(nonExistingJarFile);
     }
 
     @Test public void listJarPackages() {
@@ -43,7 +43,7 @@ public class ListPackagesTest {
         Path jarFile = Paths.get(classLoader.getResource("jar-to-bundle-converter-1.0-SNAPSHOT.jar").getFile());
         List<String> actual = null;
         try {
-            actual = Utils.listPackages(jarFile);
+            actual = BundleGeneratorUtils.listPackages(jarFile);
         } catch (IOException | JarToBundleConverterException e) {
             assert false;
         }

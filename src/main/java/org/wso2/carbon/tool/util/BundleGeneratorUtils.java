@@ -18,7 +18,7 @@
  */
 package org.wso2.carbon.tool.util;
 
-import org.wso2.carbon.tool.components.exceptions.JarToBundleConverterException;
+import org.wso2.carbon.tool.exceptions.JarToBundleConverterException;
 
 import java.io.IOException;
 import java.io.OutputStream;
@@ -45,9 +45,8 @@ import java.util.logging.Logger;
  * a Java class which contains utility methods utilized during the process of
  * converting a JAR file to an OSGi bundle
  */
-public class Utils {
-
-    private static final Logger LOGGER = Logger.getLogger(Utils.class.getName());
+public class BundleGeneratorUtils {
+    private static final Logger LOGGER = Logger.getLogger(BundleGeneratorUtils.class.getName());
     private static final Path JAR_TO_BUNDLE_DIRECTORY = Paths.get("jarsToBundles");
 
     /**
@@ -98,7 +97,8 @@ public class Utils {
                     manifest = new Manifest();
                 }
 
-                String exportedPackages = Utils.generateExportPackageList(Utils.listPackages(jarFile));
+                String exportedPackages = BundleGeneratorUtils
+                        .generateExportPackageList(BundleGeneratorUtils.listPackages(jarFile));
                 fileName = fileName.replaceAll("-", "_");
 
                 fileName = fileName.substring(0, fileName.length() - 4);
@@ -131,7 +131,7 @@ public class Utils {
                     LOGGER.info(String.format("Creating the OSGi bundle for JAR file[%s]", jarFile.toString()));
                     LOGGER.fine(String.format("Creating an OSGi bundle for JAR file[%s], at target directory[%s].",
                             tempJarFilePathHolder.toString(), extensionBundle.toString()));
-                    Utils.createBundle(jarFile, extensionBundle, manifest);
+                    BundleGeneratorUtils.createBundle(jarFile, extensionBundle, manifest);
                     LOGGER.fine(String.format("Created an OSGi bundle for JAR file[%s], at target directory[%s].",
                             tempJarFilePathHolder.toString(), extensionBundle.toString()));
                     LOGGER.info(String.format("Created the OSGi bundle[%s] for JAR file[%s]", pluginName,
@@ -240,7 +240,7 @@ public class Utils {
      */
     public static boolean delete(Path path) throws IOException {
         if (Files.isDirectory(path)) {
-            List<Path> children = Utils.listFiles(path);
+            List<Path> children = BundleGeneratorUtils.listFiles(path);
             if (children.size() > 0) {
                 for (Path aChild : children) {
                     delete(aChild);
@@ -276,7 +276,7 @@ public class Utils {
      */
     public static List<String> listPackages(Path jarFile) throws IOException, JarToBundleConverterException {
         List<String> exportedPackagesList = new ArrayList<>();
-        List<Path> content = Utils.listZipFileContent(jarFile);
+        List<Path> content = BundleGeneratorUtils.listZipFileContent(jarFile);
         content.forEach(zipChild -> {
             String path = zipChild.toString();
             if (!path.endsWith("/") && path.endsWith(".class")) {
@@ -379,4 +379,6 @@ public class Utils {
             throw new JarToBundleConverterException(message);
         }
     }
+
+
 }

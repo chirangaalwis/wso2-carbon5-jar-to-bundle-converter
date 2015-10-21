@@ -19,7 +19,7 @@
 package org.wso2.carbon.tool;
 
 import org.junit.Test;
-import org.wso2.carbon.tool.util.Utils;
+import org.wso2.carbon.tool.util.BundleGeneratorUtils;
 
 import static org.junit.Assert.assertTrue;
 
@@ -42,7 +42,7 @@ public class DeletePathTest {
         boolean deleted;
         if (Files.exists(DIRECTORY_ONE)) {
             try {
-                deleted = Utils.delete(DIRECTORY_ONE);
+                deleted = BundleGeneratorUtils.delete(DIRECTORY_ONE);
             } catch (IOException e) {
                 deleted = false;
             }
@@ -56,7 +56,7 @@ public class DeletePathTest {
         boolean deleted;
         if (Files.exists(DIRECTORY_TWO)) {
             try {
-                deleted = Utils.delete(DIRECTORY_TWO);
+                deleted = BundleGeneratorUtils.delete(DIRECTORY_TWO);
             } catch (IOException e) {
                 deleted = false;
             }

@@ -16,7 +16,7 @@
  *  under the License.
  *
  */
-package org.wso2.carbon.tool.components.exceptions;
+package org.wso2.carbon.tool.exceptions;
 
 /**
  * a custom Java class which extends the Java {@code Exception} class

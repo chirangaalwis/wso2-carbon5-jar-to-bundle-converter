@@ -19,7 +19,7 @@
 package org.wso2.carbon.tool;
 
 import org.junit.Test;
-import org.wso2.carbon.tool.util.Utils;
+import org.wso2.carbon.tool.util.BundleGeneratorUtils;
 
 import static org.junit.Assert.assertArrayEquals;
 
@@ -39,7 +39,7 @@ public class ListFilesTest {
     @Test public void listDirectoryContentTest() {
         try {
             List<Path> expectedPaths = TestUtils.getChildPaths(DIRECTORY_ONE);
-            List<Path> actualPaths = Utils.listFiles(DIRECTORY_ONE);
+            List<Path> actualPaths = BundleGeneratorUtils.listFiles(DIRECTORY_ONE);
             assertArrayEquals(expectedPaths.toArray(), actualPaths.toArray());
         } catch (IOException e) {
             assert false;

@@ -216,10 +216,10 @@ public class BundleGeneratorUtils {
                     Files.copy(p2InfFile, p2InfPathInBundle);
 
                     // deletes the temporary holder of unarchived OSGi bundle
-                    Path tempBundleHolderParent = tempBundleHolder.getParent();
+                    /*Path tempBundleHolderParent = tempBundleHolder.getParent();
                     if (tempBundleHolderParent != null) {
                         delete(tempBundleHolderParent);
-                    }
+                    }*/
                 }
             } else {
                 String message = "Manifest cannot refer to null.";
@@ -368,7 +368,7 @@ public class BundleGeneratorUtils {
                 }
                 bundleJarProperties.put("encoding", "UTF-8");
                 // converts the filename to a URI
-                URI zipFileIURI = URI.create(String.format("jar:file:%s", zipFilePath.toString()));
+                URI zipFileIURI = URI.create(String.format("jar:file:%s", zipFilePath.toUri().getPath()));
                 return FileSystems.newFileSystem(zipFileIURI, bundleJarProperties);
             } else {
                 String message = "Path zipFilePath does not refer to a .zip or .jar file.";
@@ -379,6 +379,5 @@ public class BundleGeneratorUtils {
             throw new JarToBundleConverterException(message);
         }
     }
-
 
 }

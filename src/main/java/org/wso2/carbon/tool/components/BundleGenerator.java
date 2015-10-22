@@ -68,6 +68,10 @@ public class BundleGenerator {
                             String message = "An error has occurred during the conversion. Please try again.";
                             LOGGER.info(message);
                             LOGGER.fine(e.getMessage());
+                        } catch (Exception e) {
+                            String message = "An error has occurred during the conversion.";
+                            LOGGER.info(message);
+                            LOGGER.fine(e.getMessage());
                         }
                     } else {
                         String message = "The destination file path is not a directory.";
